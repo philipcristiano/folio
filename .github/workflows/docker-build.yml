@@ -1,0 +1,23 @@
+name: Docker Build Upload Deploy
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '*'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  docker_image:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+      - name: Build
+        uses: docker/build-push-action@v2
+        with:
+          push: false

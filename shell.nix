@@ -8,6 +8,9 @@ let
   };
   pkgs = import releasedPkgs {};
   stdenv = pkgs.stdenv;
+  extraInputs = sysPkg.lib.optionals stdenv.isDarwin (with sysPkg.darwin.apple_sdk.frameworks; [
+    Cocoa
+    CoreServices]);
 
 in stdenv.mkDerivation {
   name = "env";
@@ -19,7 +22,7 @@ in stdenv.mkDerivation {
 
                   pkgs.nodejs
 
-                ];
+                ] ++ extraInputs;
   shellHook = ''
       cd ui
       npm install

@@ -3,10 +3,9 @@
 -export([run/0]).
 
 run() ->
-    {ok, User} = request("/v2/user"),
+    {ok, User} = request(<<"/v2/user">>),
     io:format("User ~p~n", [User]),
-
-    ok.
+    {ok, User}.
 
 coinbase_credentials() ->
     {ok, AppConfig} = application:get_env(folio, credentials),
@@ -17,11 +16,18 @@ coinbase_credentials() ->
     {Key, Sec}.
 
 request(Path) ->
-    BasePath = "https://api.coinbase.com",
-    Url = BasePath ++ Path,
+    request(Path, []).
 
-    Headers = coinbase_sign(get, Path),
-    io:format("Path ~p~n", [Url]),
+request(Path, QParams) ->
+    BasePath = <<"https://api.coinbase.com">>,
+    QueryString = case hackney_url:qs(QParams) of
+        <<>> -> <<>>;
+        QS -> << <<"?">>/binary, QS/binary >>
+    end,
+    PathQS = << Path/binary, QueryString/binary >>,
+
+    Url = << BasePath/binary, PathQS/binary >>,
+    Headers = coinbase_sign(get, PathQS),
 
     {ok, RespCode, RespHeaders, ClientRef} = hackney:request(get, Url, Headers, [], []),
     io:format("Resp ~p~n", [{RespCode, RespHeaders}]),
@@ -32,7 +38,8 @@ request(Path) ->
         _ ->
             jsx:decode(Body, [return_maps])
     end,
-    {ok, ParsedBody}.
+    User = maps:get(<<"data">>, ParsedBody),
+    {ok, User}.
 
 coinbase_sign(get, Path) ->
     {MegaSecs, Secs, _MicroSecs} = erlang:timestamp(),
@@ -41,10 +48,9 @@ coinbase_sign(get, Path) ->
     {Key, Secret} = coinbase_credentials(),
 
     NowBin = erlang:integer_to_binary(Now),
-    PathBin = erlang:list_to_binary(Path),
 
     io:format("K S ~p~n", [{Key, Secret}]),
-    SigMesg = << NowBin/binary, <<"GET">>/binary, PathBin/binary >>,
+    SigMesg = << NowBin/binary, <<"GET">>/binary, Path/binary >>,
     io:format("SigMesg ~p~n", [SigMesg]),
 
     SigA = hmac:hexlify(hmac:hmac256(Secret, SigMesg)),

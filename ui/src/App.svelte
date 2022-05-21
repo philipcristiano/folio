@@ -1,10 +1,110 @@
 <script>
-	export let name;
+    export let socket;
+
+	import { onMount } from 'svelte';
+	import Login from './Login.svelte';
+
+    export let items = [];
+    let list_fetched = false;
+    let user = false;
+    let coinbase_user = false;
+    let user_token;
+
+    function addItem() {
+		items = [...items, {temp_id: items.length + 1, content: "Fill me in!"}];
+        socket.send(JSON.stringify({what:"new item"}));
+        socket.send(JSON.stringify({what:"list", list: items}));
+	}
+    function start() {
+        socket.send(JSON.stringify({what:"start"}));
+	}
+    function removeItem(id) {
+        items = items.filter(i => i.id !== id);
+        socket.send(JSON.stringify({what:"remove item", id: id}));
+    }
+    function refreshList() {
+        socket.send(JSON.stringify({what: "get list"}));
+        list_fetched = true;
+    }
+	onMount(() => {
+        console.log(socket.readyState);
+        socket.onopen = function(e) {
+            user_token = sessionStorage.getItem('user_token');
+            if (user_token) {
+                socket.send(JSON.stringify({what:"token login", token: user_token}));
+            }
+        };
+	});
+    function handleItemMessage(event) {
+        socket.send(JSON.stringify({what:"list", list: items}));
+	}
+    function handleIdAssignedMessage(event) {
+        console.log("handleIdAssignedMessage");
+        function setTempId(i) {
+            if(i.temp_id == event.temp_id) {
+                console.log("Setting ID");
+                i.id = event.id;
+                delete i.temp_id;
+            }
+            return i
+        }
+        items = items.map(setTempId);
+
+    }
+    function handleLoggedInMessage(event) {
+        start();
+        user = event.username;
+        user_token = event.token;
+        sessionStorage.setItem('user_token', user_token);
+	};
+    function handleCoinbaseUser(event) {
+        coinbase_user = event.user;
+	}
+
+    socket.onmessage = function(event) {
+        var msg = JSON.parse(event.data);
+        console.log(msg);
+
+        switch(msg.what) {
+        case "list":
+            items = msg.list;
+            break;
+        case "id_assigned":
+            handleIdAssignedMessage(msg);
+            break;
+        case "logged in":
+            handleLoggedInMessage(msg);
+            break;
+        case "coinbase_user":
+            handleCoinbaseUser(msg)
+            break;
+        default:
+            alert(msg.what);
+        }
+
+    }
+
 </script>
 
 <main>
-	<h1>Hello {name}!</h1>
-	<p>Visit the <a href="https://svelte.dev/tutorial">Svelte tutorial</a> to learn how to build Svelte apps.</p>
+{#if user }
+	    <h1>Hello!</h1>
+    {#each items as item (item.id)}
+    <div>
+        <button on:click={removeItem(item.id)}> Remove item</button>
+    </div>
+    {/each}
+
+    {#if coinbase_user }
+        { coinbase_user.name }
+    {/if}
+    {#if list_fetched }
+    <button on:click={addItem}>Add an item</button>
+    {/if}
+{:else}
+    <Login bind:socket />
+{/if}
+
 </main>
 
 <style>

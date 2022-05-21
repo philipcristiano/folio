@@ -2,6 +2,7 @@
 local.config
 ebin/
 /folio.d
+/priv/public/ui/
 
 .eunit
 *.o

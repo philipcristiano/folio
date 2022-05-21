@@ -14,6 +14,8 @@ in stdenv.mkDerivation {
   buildInputs = [ released_pkgs.gnumake
                   released_pkgs.erlangR24
                   released_pkgs.wget
+                  released_pkgs.python39
+                  released_pkgs.python39Packages.virtualenv
                 ];
   shellHook = ''
   '';

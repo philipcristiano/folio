@@ -1,3 +1,8 @@
+# App
+local.config
+ebin/
+/folio.d
+
 .eunit
 *.o
 *.beam

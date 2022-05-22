@@ -8,6 +8,7 @@
     let list_fetched = false;
     let user = false;
     let coinbase_user = false;
+    let coinbase_accounts = [];
     let user_token;
 
     function addItem() {
@@ -17,6 +18,7 @@
 	}
     function start() {
         socket.send(JSON.stringify({what:"start"}));
+        socket.send(JSON.stringify({what:"coinbase_accounts"}));
 	}
     function removeItem(id) {
         items = items.filter(i => i.id !== id);
@@ -60,6 +62,9 @@
     function handleCoinbaseUser(event) {
         coinbase_user = event.user;
 	}
+    function handleCoinbaseAccounts(event) {
+        coinbase_accounts = event.accounts;
+	}
 
     socket.onmessage = function(event) {
         var msg = JSON.parse(event.data);
@@ -77,6 +82,9 @@
             break;
         case "coinbase_user":
             handleCoinbaseUser(msg)
+            break;
+        case "coinbase_accounts":
+            handleCoinbaseAccounts(msg)
             break;
         default:
             alert(msg.what);
@@ -98,6 +106,13 @@
     {#if coinbase_user }
         { coinbase_user.name }
     {/if}
+    {#each coinbase_accounts as coinbase_account (coinbase_account.id)}
+    <div>
+        { coinbase_account.id }
+        { coinbase_account.balance.currency }
+        { coinbase_account.balance.amount }
+    </div>
+    {/each}
     {#if list_fetched }
     <button on:click={addItem}>Add an item</button>
     {/if}

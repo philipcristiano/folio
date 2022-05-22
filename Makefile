@@ -31,7 +31,7 @@ dep_sync = git https://github.com/rustyio/sync.git master
 DEP_PLUGINS = elvis_mk
 
 #SHELL_OPTS = -eval 'application:ensure_all_started(folio).' -config sys
-SHELL_OPTS = -eval 'application:ensure_all_started(folio).' -config sys
+SHELL_OPTS = -eval 'application:ensure_all_started(folio), sync:go().' -config sys
 priv/static:
 	mkdir -p priv/static
 

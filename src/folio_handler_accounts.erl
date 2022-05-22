@@ -1,4 +1,5 @@
 -module(folio_handler_accounts).
+
 -behavior(cowboy_handler).
 
 -export([init/2]).

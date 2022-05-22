@@ -5,5 +5,5 @@
 -export([init/2]).
 
 init(Req0, State) ->
-    folio_coinbase_api:run(),
+    {ok, _} = folio_coinbase_api:user(),
     {ok, Req0, State}.

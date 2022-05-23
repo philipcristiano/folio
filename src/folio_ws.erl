@@ -27,17 +27,8 @@ websocket_handle(_Frame = {text, Text}, State = #state{mod = Mod, mod_state = MS
     }),
 
     What = maps:get(<<"what">>, Data),
-    case Mod:handle_data(What, Data, MS) of
-        {ok, NewMS} ->
-            {ok, State#state{mod_state = NewMS}};
-        {reply, {to_json, ReplyData}, NewMS} ->
-            io:format("right path!~n"),
-            Msg = jsx:encode(ReplyData),
-            {reply, {text, Msg}, State#state{mod_state = NewMS}};
-        {reply, Msg, NewMS} ->
-            io:format("default path!~n"),
-            {reply, Msg, State#state{mod_state = NewMS}}
-    end;
+    Resp = Mod:handle_data(What, Data, MS),
+    handle_resp(Resp, State);
 websocket_handle(Frame, State) ->
     ?LOG_INFO(#{
         what => "non-text frame",
@@ -45,9 +36,23 @@ websocket_handle(Frame, State) ->
     }),
     {ok, State}.
 
+websocket_info(Info, State = #state{mod = Mod, mod_state = MS}) ->
+    Resp = Mod:handle_info(Info, MS),
+    handle_resp(Resp, State);
 websocket_info(Info, State) ->
     ?LOG_INFO(#{
         what => "handle info",
         info => Info
     }),
     {ok, State}.
+
+handle_resp(Resp, State) ->
+    case Resp of
+        {ok, NewMS} ->
+            {ok, State#state{mod_state = NewMS}};
+        {reply, {to_json, ReplyData}, NewMS} ->
+            Msg = jsx:encode(ReplyData),
+            {reply, {text, Msg}, State#state{mod_state = NewMS}};
+        {reply, Msg, NewMS} ->
+            {reply, Msg, State#state{mod_state = NewMS}}
+    end.

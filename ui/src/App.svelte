@@ -18,7 +18,6 @@
 	}
     function start() {
         socket.send(JSON.stringify({what:"start"}));
-        socket.send(JSON.stringify({what:"coinbase_accounts"}));
 	}
     function removeItem(id) {
         items = items.filter(i => i.id !== id);
@@ -37,9 +36,6 @@
             }
         };
 	});
-    function handleItemMessage(event) {
-        socket.send(JSON.stringify({what:"list", list: items}));
-	}
     function handleIdAssignedMessage(event) {
         console.log("handleIdAssignedMessage");
         function setTempId(i) {
@@ -63,7 +59,7 @@
         coinbase_user = event.user;
 	}
     function handleCoinbaseAccounts(event) {
-        coinbase_accounts = event.accounts;
+        coinbase_accounts = [...coinbase_accounts, ...event.accounts];
 	}
 
     socket.onmessage = function(event) {
@@ -108,7 +104,7 @@
     {/if}
     {#each coinbase_accounts as coinbase_account (coinbase_account.id)}
     <div>
-        { coinbase_account.id }
+        { coinbase_account.name }
         { coinbase_account.balance.currency }
         { coinbase_account.balance.amount }
     </div>

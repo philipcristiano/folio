@@ -1,7 +1,8 @@
 -module(folio_ws_protocol).
 
 -export([init/0]).
--export([handle_data/3]).
+-export([handle_data/3,
+         handle_info/2]).
 
 -include_lib("kernel/include/logger.hrl").
 
@@ -85,19 +86,37 @@ handle_data(Msg, Data, State = #state{username = undefined}) ->
     }),
     {ok, State};
 handle_data(<<"start">>, _Data, State) ->
-    {ok, User} = folio_coinbase_api:user(),
-    Msg = #{what => coinbase_user, user => User},
-    ?LOG_INFO(Msg),
-    {reply, {to_json, Msg}, State};
-handle_data(<<"coinbase_accounts">>, _Data, State) ->
-    {ok, Accounts} = folio_coinbase_api:accounts(),
-    Msg = #{what => coinbase_accounts, accounts => Accounts},
-    ?LOG_INFO(Msg),
-    {reply, {to_json, Msg}, State};
+    Self = self(),
+    Callback = fun(Msg) ->
+        Self ! {sync, Msg}
+    end,
+
+    erlang:spawn(folio_coinbase_api, run, [Callback]),
+    {ok, State};
 handle_data(What, Data, State) ->
     ?LOG_INFO(#{
         what => "Unhandled frame",
         message => What,
         frame => Data
+    }),
+    {ok, State}.
+
+handle_info({sync, {user, User}}, State) ->
+    Msg = #{what => coinbase_user, user => User},
+    {reply, {to_json, Msg}, State};
+handle_info({sync, {accounts, Accounts}}, State) ->
+    [A|_] = Accounts,
+    ?LOG_INFO(#{
+        what => "Account Info",
+        info => A
+    }),
+
+    Msg = #{what => coinbase_accounts, accounts => Accounts},
+    {reply, {to_json, Msg}, State};
+
+handle_info(Msg, State) ->
+    ?LOG_INFO(#{
+        what => "UNHANDLED handle info",
+        info => Msg
     }),
     {ok, State}.

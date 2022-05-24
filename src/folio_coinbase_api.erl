@@ -1,13 +1,23 @@
 -module(folio_coinbase_api).
 
+-include_lib("kernel/include/logger.hrl").
 -export([accounts/1]).
 -export([run/1]).
+-export([transactions/2]).
 -export([user/0]).
 
 run(Callback) ->
     {ok, User} = user(),
     Callback({user, User}),
-    accounts(Callback).
+    F = fun({accounts, CallbackAccounts}) ->
+        Callback({accounts, CallbackAccounts}),
+        H = fun(Account) ->
+            erlang:spawn(folio_coinbase_api, transactions, [Account, Callback])
+        end,
+        lists:foreach(H, CallbackAccounts)
+    end,
+    accounts(F),
+    transactions(<<"foo">>, Callback).
 
 user() ->
     {ok, UserResp} = request(<<"/v2/user">>),
@@ -15,26 +25,52 @@ user() ->
     {ok, User}.
 
 accounts(Callback) ->
-    {ok, AccountResp} = request(<<"/v2/accounts">>),
+    {ok, AccountResp} = request(<<"/v2/accounts">>, [limit_header()]),
     Accounts = maps:get(<<"data">>, AccountResp),
     Pagination = maps:get(<<"pagination">>, AccountResp, #{}),
-    StartingAfter = maps:get(<<"next_starting_after">>, Pagination, undefined),
+    StartingAfter = maps:get(<<"next_starting_after">>, Pagination, null),
     Callback({accounts, Accounts}),
     accounts(Callback, StartingAfter).
 
-accounts(_Callback, undefined) ->
-    [];
 accounts(_Callback, null) ->
     [];
-
 accounts(Callback, StartingAfter) ->
-    {ok, AccountResp} = request(<<"/v2/accounts">>, [{<<"starting_after">>, StartingAfter}]),
+    {ok, AccountResp} = request(<<"/v2/accounts">>, [limit_header(), {<<"starting_after">>, StartingAfter}]),
     Accounts = maps:get(<<"data">>, AccountResp),
     Pagination = maps:get(<<"pagination">>, AccountResp, #{}),
     NextStartingAfter = maps:get(<<"next_starting_after">>, Pagination, undefined),
     io:format("Accounts ~p~n", [StartingAfter]),
     Callback({accounts, Accounts}),
     accounts(Callback, NextStartingAfter).
+
+transactions(#{<<"id">> := AccountID}, Callback) ->
+    transactions(AccountID, Callback, start).
+transactions(_AccountID, _Callback, null) ->
+    [];
+transactions(AccountID, Callback, StartingAfter) ->
+    Headers = case StartingAfter of
+        start -> [limit_header()];
+        Else -> [limit_header(),{<<"starting_after">>, Else}]
+    end,
+    Path = transaction_path(AccountID),
+    {ok, Resp} = request(Path, Headers),
+    Pagination = maps:get(<<"pagination">>, Resp, #{}),
+    NextStartingAfter = maps:get(<<"next_starting_after">>, Pagination, undefined),
+    Data = maps:get(<<"data">>, Resp),
+
+    ?LOG_INFO(#{
+        what => "Transactions",
+        transactions => Data
+    }),
+    ok = case Data of
+        [] -> ok;
+        _ -> Callback({transactions, Data})
+    end,
+    transactions(AccountID, Callback, NextStartingAfter).
+
+
+transaction_path(AccountId) ->
+    << <<"/v2/accounts/">>/binary, AccountId/binary, <<"/transactions">>/binary >>.
 
 coinbase_credentials() ->
     {ok, AppConfig} = application:get_env(folio, credentials),
@@ -83,12 +119,8 @@ coinbase_sign(get, Path) ->
     NowBin = erlang:integer_to_binary(Now),
 
     SigMesg = <<NowBin/binary, <<"GET">>/binary, Path/binary>>,
-    io:format("SigMesg ~p~n", [SigMesg]),
-
-    SigB = hmac:hexlify(crypto:mac(hmac, sha256, Secret, SigMesg)),
-    io:format("Sig B ~p~n", [SigB]),
-
-    Sig = string:lowercase(SigB),
+    SigUpper = hmac:hexlify(crypto:mac(hmac, sha256, Secret, SigMesg)),
+    Sig = string:lowercase(SigUpper),
 
     Headers = [
         {<<"CB-ACCESS-KEY">>, Key},
@@ -99,3 +131,9 @@ coinbase_sign(get, Path) ->
         {<<"Content-Type">>, <<"application/json">>}
     ],
     Headers.
+
+limit_header() ->
+    limit_header(100).
+
+limit_header(N) ->
+    {<<"limit">>, N}.

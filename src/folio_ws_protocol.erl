@@ -113,6 +113,9 @@ handle_info({sync, {accounts, Accounts}}, State) ->
 
     Msg = #{what => coinbase_accounts, accounts => Accounts},
     {reply, {to_json, Msg}, State};
+handle_info({sync, {transactions, Transactions}}, State) ->
+    Msg = #{what => coinbase_transactions, transactions => Transactions},
+    {reply, {to_json, Msg}, State};
 
 handle_info(Msg, State) ->
     ?LOG_INFO(#{

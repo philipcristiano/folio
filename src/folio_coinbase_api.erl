@@ -7,8 +7,10 @@
 -export([user/0]).
 
 run(Callback) ->
-    {ok, User} = user(),
-    Callback({user, User}),
+    case user() of
+        {error, _ } -> ok;
+        {ok, User} -> Callback({user, User})
+    end,
     F = fun({accounts, CallbackAccounts}) ->
         Callback({accounts, CallbackAccounts}),
         H = fun(Account) ->
@@ -16,13 +18,15 @@ run(Callback) ->
         end,
         lists:foreach(H, CallbackAccounts)
     end,
-    accounts(F),
-    transactions(<<"foo">>, Callback).
+    accounts(F).
 
 user() ->
-    {ok, UserResp} = request(<<"/v2/user">>),
-    User = maps:get(<<"data">>, UserResp),
-    {ok, User}.
+    case request(<<"/v2/user">>) of
+        {ok, Resp} ->
+            User = maps:get(<<"data">>, Resp),
+            {ok, User};
+        Else -> Else
+    end.
 
 accounts(Callback) ->
     {ok, AccountResp} = request(<<"/v2/accounts">>, [limit_header()]),
@@ -43,13 +47,16 @@ accounts(Callback, StartingAfter) ->
     Callback({accounts, Accounts}),
     accounts(Callback, NextStartingAfter).
 
-transactions(#{<<"id">> := AccountID}, Callback) ->
-    transactions(AccountID, Callback, start).
-transactions(_AccountID, _Callback, null) ->
-    [];
-transactions(AccountID, Callback, StartingAfter) ->
+-spec transactions(map(), function()) -> ok.
+transactions(Account=#{<<"id">> := AccountID}, Callback) when is_map(Account)->
+    transactions(AccountID, Callback, <<"">>).
+
+-spec transactions(binary(), function(), atom | binary()) -> ok.
+transactions(_AccountID, _Callback, StartingAfternull) when is_atom(StartingAfternull)->
+    ok;
+transactions(AccountID, Callback, StartingAfter) when is_binary(StartingAfter) ->
     Headers = case StartingAfter of
-        start -> [limit_header()];
+        <<"">> -> [limit_header()];
         Else -> [limit_header(),{<<"starting_after">>, Else}]
     end,
     Path = transaction_path(AccountID),
@@ -80,6 +87,9 @@ coinbase_credentials() ->
 
     {Key, Sec}.
 
+-spec request(binary()) -> {ok, map()} | {error, binary()}.
+-spec request(binary(), list()) -> {ok, map()} | {error, binary()}.
+
 request(Path) ->
     request(Path, []).
 
@@ -95,20 +105,12 @@ request(Path, QParams) ->
     Url = <<BasePath/binary, PathQS/binary>>,
     Headers = coinbase_sign(get, PathQS),
 
-    {ok, RespCode, RespHeaders, ClientRef} = hackney:request(get, Url, Headers, [], []),
-    {ok, Body} = hackney:body(ClientRef),
-    ParsedBody =
-        case hackney_headers:header_value(<<"Content-Type">>, RespHeaders) of
-            <<"application/json; charset=utf-8">> ->
-                jsx:decode(Body, [return_maps]);
-            _ ->
-                jsx:decode(Body, [return_maps])
-        end,
-    RespStatus = case RespCode of
-        200 -> ok;
-        _ -> error
-    end,
-    {RespStatus, ParsedBody}.
+    {ok, _RespCode, _RespHeaders, Body} = hackney:request(get, Url, Headers, [], [with_body]),
+
+    case jsx:is_json(Body) of
+        true -> {ok, jsx:decode(Body, [return_maps])};
+        false -> {error, Body}
+    end.
 
 coinbase_sign(get, Path) ->
     {MegaSecs, Secs, _MicroSecs} = erlang:timestamp(),
@@ -136,4 +138,4 @@ limit_header() ->
     limit_header(100).
 
 limit_header(N) ->
-    {<<"limit">>, N}.
+    {<<"limit">>, integer_to_binary(N)}.

@@ -1,8 +1,10 @@
 -module(folio_ws_protocol).
 
 -export([init/0]).
--export([handle_data/3,
-         handle_info/2]).
+-export([
+    handle_data/3,
+    handle_info/2
+]).
 
 -include_lib("kernel/include/logger.hrl").
 
@@ -105,21 +107,26 @@ handle_info({sync, {user, User}}, State) ->
     Msg = #{what => coinbase_user, user => User},
     {reply, {to_json, Msg}, State};
 handle_info({sync, {accounts, Accounts}}, State) ->
-    [A|_] = Accounts,
+    [A | _] = Accounts,
     ?LOG_INFO(#{
         what => "Account Info",
         info => A
     }),
+    NonZeroBalAccounts = lists:filter(fun account_non_zero_balance/1, Accounts),
 
-    Msg = #{what => coinbase_accounts, accounts => Accounts},
+    Msg = #{what => coinbase_accounts, accounts => NonZeroBalAccounts},
     {reply, {to_json, Msg}, State};
 handle_info({sync, {transactions, Transactions}}, State) ->
     Msg = #{what => coinbase_transactions, transactions => Transactions},
     {reply, {to_json, Msg}, State};
-
 handle_info(Msg, State) ->
     ?LOG_INFO(#{
         what => "UNHANDLED handle info",
         info => Msg
     }),
     {ok, State}.
+
+account_non_zero_balance(#{balance := 0.0}) ->
+    false;
+account_non_zero_balance(_Any) ->
+    true.

@@ -111,9 +111,8 @@
     {/if}
     {#each coinbase_accounts as coinbase_account (coinbase_account.id)}
     <div>
-        { coinbase_account.name }
-        { coinbase_account.balance.currency }
-        { coinbase_account.balance.amount }
+        { coinbase_account.symbol }
+        { coinbase_account.balance }
     </div>
     {/each}
     <div>

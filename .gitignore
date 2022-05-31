@@ -1,3 +1,10 @@
+# App
+local.config
+ebin/
+/folio.d
+/priv/public/ui/
+/_rel
+
 .eunit
 *.o
 *.beam

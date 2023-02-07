@@ -26,22 +26,26 @@ handle_data(<<"token login">>, Data, State = #state{}) ->
                     what => "Token login succeeded",
                     username => Username
                 }),
-                {#{
+                {
+                    #{
                         what => <<"logged in">>,
                         token => Token,
                         username => Username
                     },
-                    State#state{username = Username}};
+                    State#state{username = Username}
+                };
             {error, invalid_token} ->
                 ?LOG_INFO(#{
                     what => "Token login failed",
                     token => Token
                 }),
-                {#{
+                {
+                    #{
                         what => <<"login failed">>,
                         token => Token
                     },
-                    State}
+                    State
+                }
         end,
     Json = jsx:encode(Reply),
     {reply, {text, Json}, State0};

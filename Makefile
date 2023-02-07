@@ -1,47 +1,38 @@
-PROJECT = folio
-PROJECT_DESCRIPTION = New project
-PROJECT_VERSION = 0.1.0
+.PHONY: deps
+deps:
+	./rebar3 deps
 
-BUILD_DEPS = elvis_mk \
-			 erlfmt
+.PHONY: compile
+compile:
+	./rebar3 compile
 
-LOCAL_DEPS = sasl
-DEPS = cowboy \
-	   erlsha2 \
-	   erlydtl \
-	   hackney \
-	   jsx \
-	   jwt
+.PHONY: shell
+shell: compile
+	./rebar3 shell
 
-TEST_DEPS = meck
-CT_OPTS ?= -create_priv_dir auto_per_tc
+.PHONY: dialyze
+dialyze:
+	./rebar3 dialyzer
 
-SHELL_DEPS = sync
+.PHONY: live_ui
+live_ui:
+	cd ui; npm run dev
 
-dep_cowboy_commit = 2.9.0
-dep_elvis_mk = git https://github.com/inaka/elvis.mk.git 1.0.0
-dep_erlfmt = git https://github.com/WhatsApp/erlfmt.git v0.8.0
-dep_erlsha2 = git https://github.com/vinoski/erlsha2.git 2.2.1
-dep_erlydtl = git https://github.com/erlydtl/erlydtl.git 0.14.0
-dep_hackney = git https://github.com/benoitc/hackney.git 1.18.1
-dep_jsx = git https://github.com/talentdeficit/jsx.git v2.10.0
-dep_jwt = git https://github.com/artemeff/jwt.git 0.1.11
-dep_sync = git https://github.com/rustyio/sync.git master
+.PHONY: test
+test:
+	rm -rf _build/test/cover
+	./rebar3 eunit
 
-DEP_PLUGINS = elvis_mk
+.PHONY: rel
+rel:
+	./rebar3 release
 
-#SHELL_OPTS = -eval 'application:ensure_all_started(folio).' -config sys
-SHELL_OPTS = -eval 'application:ensure_all_started(folio), sync:go().' -config sys
-priv/static:
-	mkdir -p priv/static
+.PHONY: tar
+tar:
+	./rebar3 tar
 
 erlfmt:
-	$(gen_verbose) $(SHELL_ERL) -pa $(SHELL_PATHS) -eval 'erlfmt_cli:do("erlfmt", [write, {files, ["src/*.erl"]} ]), halt(0)'
+	./rebar3 fmt -w
 
 erlfmt_check:
-	$(gen_verbose) $(SHELL_ERL) -pa $(SHELL_PATHS) -eval 'erlfmt_cli:do("erlfmt", [check, {files, ["src/*.erl"]} ]), halt(0)'
-
-.PHONY:test
-test: tests
-
-include erlang.mk
+	./rebar3 fmt --check

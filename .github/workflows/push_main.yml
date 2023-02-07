@@ -1,0 +1,26 @@
+name: Main Branch Deploy
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+
+jobs:
+
+  erlang:
+    uses: "philipcristiano/workflows/.github/workflows/rebar3.yml@main"
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  docker_push:
+    name: "Push docker image"
+    uses: "philipcristiano/workflows/.github/workflows/docker-build-push.yml@main"
+
+    with:
+      repository: philipcristiano/hvac-iot-mqtt-influx
+
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}

@@ -1,0 +1,23 @@
+[
+ {kernel, [
+  {logger_level, ${LOG_LEVEL}},
+  {logger, [
+    %% Console logger
+    {handler, default, logger_std_h, #{formatter => {jsonformat, #{new_line => true,
+                                                                   key_mapping => #{ level => severity,
+                                                                                     report => message}}}}
+    }
+ ]}
+]},
+
+ {opentelemetry,
+  [
+   {resource, [{service, #{name => "hvac_iot"}}]},
+   {span_processor, batch},
+   {sampler, {otel_sampler_always_on, #{}}},
+   {traces_exporter, otlp}
+   %{traces_exporter, {otel_exporter_stdout, []}}
+ ]},
+
+"${CONFIG_ROOT}/app"].
+

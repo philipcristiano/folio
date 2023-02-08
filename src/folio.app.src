@@ -21,7 +21,8 @@
         opentelemetry_process_propagator,
         telemetry,
         cowboy_telemetry,
-        cowboy
+        cowboy,
+        throttle
     ]},
     {env, []},
     {modules, []},

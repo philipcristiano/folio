@@ -2,10 +2,15 @@
 
 -include_lib("kernel/include/logger.hrl").
 
+-export([folio_init/0]).
 -export([accounts/1]).
 -export([run/1]).
 -export([transactions/2]).
 -export([user/0]).
+
+folio_init() ->
+    ok = throttle:setup(?MODULE, 3, per_second),
+    ok.
 
 run(Callback) ->
     case user() of
@@ -43,7 +48,8 @@ accounts(Callback) ->
     Callback({accounts, FAccounts}),
     accounts(Callback, StartingAfter).
 
-accounts(_Callback, null) ->
+accounts(Callback, null) ->
+    Callback({accounts, complete}),
     [];
 accounts(Callback, StartingAfter) ->
     {ok, AccountResp} = request(<<"/v2/accounts">>, [
@@ -63,7 +69,8 @@ transactions(Account = #{<<"id">> := AccountID}, Callback) when is_map(Account) 
     transactions(AccountID, Callback, <<"">>).
 
 -spec transactions(binary(), function(), atom | binary()) -> ok.
-transactions(_AccountID, _Callback, StartingAfternull) when is_atom(StartingAfternull) ->
+transactions(_AccountID, Callback, StartingAfternull) when is_atom(StartingAfternull) ->
+    Callback({transactions, complete}),
     ok;
 transactions(AccountID, Callback, StartingAfter) when is_binary(StartingAfter) ->
     Headers =
@@ -161,6 +168,8 @@ request(Path, QParams) ->
     Url = <<BasePath/binary, PathQS/binary>>,
     Headers = coinbase_sign(get, PathQS),
 
+    rate_limit(),
+
     {ok, _RespCode, _RespHeaders, Body} = hackney:request(get, Url, Headers, [], [with_body]),
 
     case jsx:is_json(Body) of
@@ -196,3 +205,16 @@ limit_header() ->
 
 limit_header(N) ->
     {<<"limit">>, integer_to_binary(N)}.
+
+rate_limit() ->
+    case throttle:check(?MODULE, key) of
+        {ok, _RemainingAttempts, _TimeToReset} ->
+            ok;
+        {limit_exceeded, _, TimeToReset} ->
+            ?LOG_DEBUG(#{
+                message => "Rate limit would be exceeded",
+                time_to_sleep => TimeToReset
+            }),
+            timer:sleep(TimeToReset),
+            rate_limit()
+    end.

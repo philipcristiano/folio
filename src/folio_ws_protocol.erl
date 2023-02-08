@@ -110,6 +110,8 @@ handle_data(What, Data, State) ->
 handle_info({sync, {user, User}}, State) ->
     Msg = #{what => coinbase_user, user => User},
     {reply, {to_json, Msg}, State};
+handle_info({sync, {accounts, complete}}, State) ->
+    {ok, State};
 handle_info({sync, {accounts, Accounts}}, State) ->
     [A | _] = Accounts,
     ?LOG_INFO(#{

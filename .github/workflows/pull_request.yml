@@ -1,0 +1,17 @@
+name: Pull Request
+
+on:
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+
+  docker_build:
+    uses: "philipcristiano/workflows/.github/workflows/docker-build.yml@main"
+
+  erlang:
+    uses: "philipcristiano/workflows/.github/workflows/rebar3.yml@main"
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

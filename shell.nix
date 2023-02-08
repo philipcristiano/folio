@@ -3,8 +3,8 @@ let
   releasedPkgs = sysPkg.fetchFromGitHub {
     owner = "NixOS";
     repo = "nixpkgs";
-    rev = "21.11";
-    sha256 = "sha256-AjhmbT4UBlJWqxY0ea8a6GU2C2HdKUREkG43oRr3TZg=";
+    rev = "22.11";
+    sha256 = "sha256-/HEZNyGbnQecrgJnfE8d0WC5c1xuPSD2LUpB6YXlg4c=";
   };
   pkgs = import releasedPkgs {};
   stdenv = pkgs.stdenv;
@@ -15,10 +15,8 @@ let
 in stdenv.mkDerivation {
   name = "env";
   buildInputs = [ pkgs.gnumake
-                  pkgs.erlangR24
+                  pkgs.erlangR25
                   pkgs.wget
-                  pkgs.python39
-                  pkgs.python39Packages.virtualenv
 
                   pkgs.nodejs
 

@@ -1,0 +1,32 @@
+{application, folio, [
+    {description, "An OTP application"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {mod, {folio_app, []}},
+    {applications, [
+        kernel,
+        stdlib,
+        sasl,
+        jsx,
+        jwt,
+        jsonformat,
+        inets,
+        public_key,
+        ssl,
+        hackney,
+        tls_certificate_check,
+        opentelemetry_api,
+        opentelemetry,
+        opentelemetry_telemetry,
+        opentelemetry_process_propagator,
+        telemetry,
+        cowboy_telemetry,
+        cowboy,
+        throttle
+    ]},
+    {env, []},
+    {modules, []},
+
+    {licenses, []},
+    {links, []}
+]}.

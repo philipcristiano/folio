@@ -122,6 +122,8 @@ handle_info({sync, {accounts, Accounts}}, State) ->
 
     Msg = #{what => coinbase_accounts, accounts => NonZeroBalAccounts},
     {reply, {to_json, Msg}, State};
+handle_info({sync, {transactions, complete}}, State) ->
+    {ok, State};
 handle_info({sync, {transactions, Transactions}}, State) ->
     Msg = #{what => coinbase_transactions, transactions => Transactions},
     {reply, {to_json, Msg}, State};

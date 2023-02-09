@@ -3,13 +3,13 @@
 -include_lib("kernel/include/logger.hrl").
 
 -export([folio_init/0]).
--export([accounts/1]).
+-export([accounts_init/0, accounts/1]).
 -export([run/1]).
 -export([transactions/2]).
 -export([user/0]).
 
 folio_init() ->
-    ok = throttle:setup(?MODULE, 3, per_second),
+    ok = throttle:setup(?MODULE, 10, per_second),
     ok.
 
 run(Callback) ->
@@ -22,11 +22,11 @@ run(Callback) ->
 
         ?LOG_DEBUG(#{
             what => "Can sync transactions here"
-        })
-    % H = fun(Account) ->
-    %     erlang:spawn(folio_coinbase_api, transactions, [Account, Callback])
-    % end,
-    % lists:foreach(H, CallbackAccounts)
+        }),
+        H = fun(Account) ->
+            erlang:spawn(folio_coinbase_api, transactions, [Account, Callback])
+        end,
+        lists:foreach(H, CallbackAccounts)
     end,
     accounts(F).
 
@@ -39,33 +39,31 @@ user() ->
             Else
     end.
 
-accounts(Callback) ->
-    {ok, AccountResp} = request(<<"/v2/accounts">>, [limit_header()]),
-    Accounts = maps:get(<<"data">>, AccountResp),
-    Pagination = maps:get(<<"pagination">>, AccountResp, #{}),
-    StartingAfter = maps:get(<<"next_starting_after">>, Pagination, null),
-    FAccounts = lists:map(fun cb_to_account/1, Accounts),
-    Callback({accounts, FAccounts}),
-    accounts(Callback, StartingAfter).
+accounts_init() ->
+    #{next_uri => <<"/v2/accounts?limit=100">>}.
 
-accounts(Callback, null) ->
-    Callback({accounts, complete}),
-    [];
-accounts(Callback, StartingAfter) ->
-    {ok, AccountResp} = request(<<"/v2/accounts">>, [
-        limit_header(),
-        {<<"starting_after">>, StartingAfter}
-    ]),
+-spec accounts(any()) -> {complete, list()} | {incomplete, list()}.
+accounts(State = #{next_uri := NextURI}) ->
+    {ok, AccountResp} = request(NextURI),
+
     Accounts = maps:get(<<"data">>, AccountResp),
+
     Pagination = maps:get(<<"pagination">>, AccountResp, #{}),
-    NextStartingAfter = maps:get(<<"next_starting_after">>, Pagination, undefined),
-    io:format("Accounts ~p~n", [StartingAfter]),
+    NextNextURI = maps:get(<<"next_uri">>, Pagination, null),
+
+    % Determine if this is complete
+    Complete =
+        case NextNextURI of
+            null -> complete;
+            _ -> incomplete
+        end,
+
+    NewState = State#{next_uri => NextNextURI},
     FAccounts = lists:map(fun cb_to_account/1, Accounts),
-    Callback({accounts, FAccounts}),
-    accounts(Callback, NextStartingAfter).
+    {Complete, FAccounts, NewState}.
 
 -spec transactions(map(), function()) -> ok.
-transactions(Account = #{<<"id">> := AccountID}, Callback) when is_map(Account) ->
+transactions(Account = #{id := AccountID}, Callback) when is_map(Account) ->
     transactions(AccountID, Callback, <<"">>).
 
 -spec transactions(binary(), function(), atom | binary()) -> ok.
@@ -84,10 +82,10 @@ transactions(AccountID, Callback, StartingAfter) when is_binary(StartingAfter) -
     NextStartingAfter = maps:get(<<"next_starting_after">>, Pagination, undefined),
     Data = maps:get(<<"data">>, Resp),
 
-    ?LOG_INFO(#{
-        what => "Transactions",
-        transactions => Data
-    }),
+    % ?LOG_INFO(#{
+    %     what => "Transactions",
+    %     transactions => Data
+    % }),
     ok =
         case Data of
             [] ->
@@ -132,6 +130,12 @@ cb_to_tx(#{<<"type">> := <<"pro_deposit">>, <<"created_at">> := CreatedAt, <<"id
         source_id => SourceID,
         type => deposit
     };
+cb_to_tx(#{<<"type">> := <<"pro_withdraw">>, <<"created_at">> := CreatedAt, <<"id">> := SourceID}) ->
+    #{
+        datetime => CreatedAt,
+        source_id => SourceID,
+        type => withdraw
+    };
 cb_to_tx(#{<<"type">> := <<"send">>, <<"created_at">> := CreatedAt, <<"id">> := SourceID}) ->
     #{
         datetime => CreatedAt,
@@ -153,22 +157,24 @@ coinbase_credentials() ->
 -spec request(binary()) -> {ok, map()} | {error, binary()}.
 -spec request(binary(), list()) -> {ok, map()} | {error, binary()}.
 
-request(Path) ->
-    request(Path, []).
-
 request(Path, QParams) ->
-    BasePath = <<"https://api.coinbase.com">>,
     QueryString =
         case hackney_url:qs(QParams) of
             <<>> -> <<>>;
             QS -> <<<<"?">>/binary, QS/binary>>
         end,
     PathQS = <<Path/binary, QueryString/binary>>,
+    request(PathQS).
+request(PathQS) ->
+    BasePath = <<"https://api.coinbase.com">>,
 
     Url = <<BasePath/binary, PathQS/binary>>,
-    Headers = coinbase_sign(get, PathQS),
 
     rate_limit(),
+    % coinbase_sign requires a timestamp so rate limiting before it can cause
+    % signing errors if the request is delayed too long
+    Headers = coinbase_sign(get, PathQS),
+    io:format("Headers ~p~n", [{PathQS, Headers}]),
 
     {ok, _RespCode, _RespHeaders, Body} = hackney:request(get, Url, Headers, [], [with_body]),
 
@@ -178,8 +184,7 @@ request(Path, QParams) ->
     end.
 
 coinbase_sign(get, Path) ->
-    {MegaSecs, Secs, _MicroSecs} = erlang:timestamp(),
-    Now = MegaSecs * 1000000 + Secs,
+    Now = os:system_time(second),
 
     {Key, Secret} = coinbase_credentials(),
 
@@ -211,10 +216,18 @@ rate_limit() ->
         {ok, _RemainingAttempts, _TimeToReset} ->
             ok;
         {limit_exceeded, _, TimeToReset} ->
+            ChosenTime = time_to_reset(TimeToReset),
             ?LOG_DEBUG(#{
                 message => "Rate limit would be exceeded",
-                time_to_sleep => TimeToReset
+                time_to_reset => TimeToReset,
+                time_to_sleep => ChosenTime,
+                pid => self()
             }),
-            timer:sleep(TimeToReset),
+            timer:sleep(ChosenTime),
             rate_limit()
     end.
+
+time_to_reset(I) when I < 2 ->
+    rand:uniform(30);
+time_to_reset(N) ->
+    N.

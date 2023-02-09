@@ -22,14 +22,24 @@ start(_Type, _Args) ->
         {"/accounts", folio_handler_accounts, []},
         {"/ws", folio_ws, #{module => folio_ws_protocol}}
     ],
-    AllRoutes = AppRoutes ++ StaticRoute,
-    Dispatch = cowboy_router:compile([
-        {'_', AllRoutes}
-    ]),
+    AllRoutes = AppRoutes ++ setup_trails() ++ StaticRoute,
+    Dispatch = trails:single_host_compile(AllRoutes),
+
+    Port = folio_config:hosting_port(),
+    ?LOG_INFO(#{
+        message => "HTTP Port",
+        port => Port
+    }),
+
+    APIPort = list_to_integer(os:getenv("API_PORT", Port)),
+
     {ok, _} = cowboy:start_clear(
         folio,
-        [{port, 8000}],
-        #{env => #{dispatch => Dispatch}}
+        [{port, APIPort}],
+        #{
+            env => #{dispatch => Dispatch},
+            stream_handlers => [cowboy_telemetry_h, cowboy_stream_h]
+        }
     ),
     {ok, Pid}.
 
@@ -46,23 +56,44 @@ cowboy_priv_path_for_dir(_IsLocalDev = true, _App, Path) ->
 cowboy_priv_path_for_dir(_IsLocalDev = false, App, Path) ->
     {priv_dir, App, Path}.
 
-init_folio_modules() ->
+mod_strings() ->
     AvailableMods = code:all_available(),
+    ModStrings = lists:map(fun({ModString, _, _}) -> ModString end, AvailableMods),
+    ModStrings.
 
-    lists:foreach(
-        fun({ModL, _, _}) ->
-            Mod = list_to_atom(ModL),
-            try
-                Exports = Mod:module_info(exports),
-
-                case lists:member({folio_init, 0}, Exports) of
-                    true -> Mod:folio_init();
-                    false -> ok
-                end
-            catch
-                error:undef -> ok
-            end
-        end,
-        AvailableMods
+init_folio_modules() ->
+    ?LOG_INFO(#{message => "Loading folio modules to auto-init"}),
+    ModStrings = mod_strings(),
+    FolioModStrings = lists:filter(
+        fun(ModString) -> lists:prefix("folio_", ModString) end, ModStrings
     ),
+    ModAtoms = lists:map(fun erlang:list_to_atom/1, FolioModStrings),
+    ModsWithInit = lists:filter(
+        fun(Mod) -> mod_has_function_signature({folio_init, 0}, Mod) end, ModAtoms
+    ),
+
+    lists:foreach(fun(Mod) -> Mod:folio_init() end, ModsWithInit),
     ok.
+
+mod_has_function_signature(Signature, Mod) ->
+    try
+        Exports = Mod:module_info(exports),
+        lists:member(Signature, Exports)
+    catch
+        error:undef -> false
+    end.
+
+trails_handlers() ->
+    ModStrings = mod_strings(),
+
+    FolioModStrings = lists:filter(
+        fun(ModString) -> lists:prefix("folio_handler_", ModString) end, ModStrings
+    ),
+    ModAtoms = lists:map(fun erlang:list_to_atom/1, FolioModStrings),
+    ModAtoms.
+
+setup_trails() ->
+    Handlers = trails_handlers(),
+    Trails = trails:trails(Handlers),
+    trails:store(Trails),
+    Trails.

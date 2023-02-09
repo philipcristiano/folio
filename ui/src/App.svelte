@@ -3,6 +3,7 @@
 
 	import { onMount } from 'svelte';
 	import Login from './Login.svelte';
+	import AccountList from './AccountList.svelte';
 
     export let items = [];
     let list_fetched = false;
@@ -12,22 +13,6 @@
     let coinbase_transactions = [];
     let user_token;
 
-    function addItem() {
-		items = [...items, {temp_id: items.length + 1, content: "Fill me in!"}];
-        socket.send(JSON.stringify({what:"new item"}));
-        socket.send(JSON.stringify({what:"list", list: items}));
-	}
-    function start() {
-        socket.send(JSON.stringify({what:"start"}));
-	}
-    function removeItem(id) {
-        items = items.filter(i => i.id !== id);
-        socket.send(JSON.stringify({what:"remove item", id: id}));
-    }
-    function refreshList() {
-        socket.send(JSON.stringify({what: "get list"}));
-        list_fetched = true;
-    }
 	onMount(() => {
         console.log(socket.readyState);
         socket.onopen = function(e) {
@@ -83,14 +68,8 @@
         case "coinbase_user":
             handleCoinbaseUser(msg)
             break;
-        case "coinbase_accounts":
-            handleCoinbaseAccounts(msg)
-            break;
-        case "coinbase_transactions":
-            handleCoinbaseTransactions(msg)
-            break;
         default:
-            alert(msg.what);
+            console.log(msg.what);
         }
 
     }
@@ -98,23 +77,11 @@
 </script>
 
 <main>
-{#if user }
-	    <h1>Hello!</h1>
-    {#each items as item (item.id)}
-    <div>
-        <button on:click={removeItem(item.id)}> Remove item</button>
-    </div>
-    {/each}
-
+<h1>Hello!</h1>
     {#if coinbase_user }
         { coinbase_user.name }
     {/if}
-    {#each coinbase_accounts as coinbase_account (coinbase_account.id)}
-    <div>
-        { coinbase_account.symbol }
-        { coinbase_account.balance }
-    </div>
-    {/each}
+    <AccountList />
     <div>
     {#each coinbase_transactions as coinbase_transaction (coinbase_transaction.id)}
         <div>
@@ -124,9 +91,6 @@
         </div>
     {/each}
     </div>
-{:else}
-    <Login bind:socket />
-{/if}
 
 </main>
 

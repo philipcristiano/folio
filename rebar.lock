@@ -20,6 +20,7 @@
   0},
  {<<"jsx">>,{pkg,<<"jsx">>,<<"2.10.0">>},0},
  {<<"jwt">>,{pkg,<<"jwt">>,<<"0.1.11">>},0},
+ {<<"meck">>,{pkg,<<"meck">>,<<"0.9.2">>},1},
  {<<"metrics">>,{pkg,<<"metrics">>,<<"1.0.1">>},1},
  {<<"mimerl">>,{pkg,<<"mimerl">>,<<"1.2.0">>},1},
  {<<"opentelemetry">>,{pkg,<<"opentelemetry">>,<<"1.2.1">>},0},
@@ -41,6 +42,10 @@
  {<<"qdate">>,{pkg,<<"qdate">>,<<"0.7.0">>},0},
  {<<"qdate_localtime">>,{pkg,<<"qdate_localtime">>,<<"1.2.0">>},1},
  {<<"ranch">>,{pkg,<<"ranch">>,<<"1.8.0">>},1},
+ {<<"specified_handler">>,
+  {git,"https://github.com/philipcristiano/specified_handler.git",
+       {ref,"b134c77328c1d8373dae40114168dcc0efe3a0f7"}},
+  0},
  {<<"ssl_verify_fun">>,{pkg,<<"ssl_verify_fun">>,<<"1.1.6">>},1},
  {<<"telemetry">>,{pkg,<<"telemetry">>,<<"1.1.0">>},0},
  {<<"telemetry_registry">>,{pkg,<<"telemetry_registry">>,<<"0.3.0">>},1},
@@ -48,6 +53,7 @@
  {<<"tls_certificate_check">>,
   {pkg,<<"tls_certificate_check">>,<<"1.17.3">>},
   1},
+ {<<"trails">>,{pkg,<<"trails">>,<<"2.3.0">>},0},
  {<<"unicode_util_compat">>,{pkg,<<"unicode_util_compat">>,<<"0.7.0">>},1}]}.
 [
 {pkg_hash,[
@@ -68,6 +74,7 @@
  {<<"idna">>, <<"8A63070E9F7D0C62EB9D9FCB360A7DE382448200FBBD1B106CC96D3D8099DF8D">>},
  {<<"jsx">>, <<"77760560D6AC2B8C51FD4C980E9E19B784016AA70BE354CE746472C33BEB0B1C">>},
  {<<"jwt">>, <<"4F18896C4A182530ED445312C45AC353D801FBDFD54F538910370E9CF12687CF">>},
+ {<<"meck">>, <<"85CCBAB053F1DB86C7CA240E9FC718170EE5BDA03810A6292B5306BF31BAE5F5">>},
  {<<"metrics">>, <<"25F094DEA2CDA98213CECC3AEFF09E940299D950904393B2A29D191C346A8486">>},
  {<<"mimerl">>, <<"67E2D3F571088D5CFD3E550C383094B47159F3EEE8FFA08E64106CDF5E981BE3">>},
  {<<"opentelemetry">>, <<"6B374A0B4EBBD206D0C7C13EA34A8B46C63BFEFA86D813ED07613876F1811575">>},
@@ -86,6 +93,7 @@
  {<<"telemetry_registry">>, <<"6768F151EA53FC0FBCA70DBFF5B20A8D663EE4E0C0B2AE589590E08658E76F1E">>},
  {<<"throttle">>, <<"5F50AC593092B71D85DD1061B9673895532D34C8B4836A5C04A9F8395E183E27">>},
  {<<"tls_certificate_check">>, <<"B84B68C5A607A37C98C88D26101028F9667DF520FF6557ACBABCAFB6799EB317">>},
+ {<<"trails">>, <<"B09703F056705F4943E14FFF077B98C711A6F48FAD40F4FF0B350794074AD69C">>},
  {<<"unicode_util_compat">>, <<"BC84380C9AB48177092F43AC89E4DFA2C6D62B40B8BD132B1059ECC7232F9A78">>}]},
 {pkg_hash_ext,[
  {<<"acceptor_pool">>, <<"0CBCD83FDC8B9AD2EEE2067EF8B91A14858A5883CB7CD800E6FCD5803E158788">>},
@@ -105,6 +113,7 @@
  {<<"idna">>, <<"92376EB7894412ED19AC475E4A86F7B413C1B9FBB5BD16DCCD57934157944CEA">>},
  {<<"jsx">>, <<"9A83E3704807298016968DB506F9FAD0F027DE37546EB838B3AE1064C3A0AD62">>},
  {<<"jwt">>, <<"B483FBB786D1BD050B3C551D323112D604E5B0F9CF9DC5671ADEEC462C2E36BB">>},
+ {<<"meck">>, <<"81344F561357DC40A8344AFA53767C32669153355B626EA9FCBC8DA6B3045826">>},
  {<<"metrics">>, <<"69B09ADDDC4F74A40716AE54D140F93BEB0FB8978D8636EADED0C31B6F099F16">>},
  {<<"mimerl">>, <<"F278585650AA581986264638EBF698F8BB19DF297F66AD91B18910DFC6E19323">>},
  {<<"opentelemetry">>, <<"9A627F3BFFCB972D404590EF686309863D0FE09DDF1A4612430B99D781ECF940">>},
@@ -123,5 +132,6 @@
  {<<"telemetry_registry">>, <<"492E2ADBC609F3E79ECE7F29FEC363A97A2C484AC78A83098535D6564781E917">>},
  {<<"throttle">>, <<"EE7009525FADC5179D1214D1EB1FC26779A3BBEF1FDE28A772D04B41EADF5FBA">>},
  {<<"tls_certificate_check">>, <<"EEC5BA4298DEE0B4E1EF612D90B2A35F6AF064D477BD9531EAC19CABA9F84A0A">>},
+ {<<"trails">>, <<"40804001EB80417AA9D02400F39B7216956C3F251539A8A6096A69B3FAC0EA07">>},
  {<<"unicode_util_compat">>, <<"25EEE6D67DF61960CF6A794239566599B09E17E668D3700247BC498638152521">>}]}
 ].

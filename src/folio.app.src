@@ -15,6 +15,7 @@
         ssl,
         hackney,
         tls_certificate_check,
+        trails,
         opentelemetry_api,
         opentelemetry,
         opentelemetry_telemetry,
@@ -22,6 +23,7 @@
         telemetry,
         cowboy_telemetry,
         cowboy,
+        specified_handler,
         throttle
     ]},
     {env, []},

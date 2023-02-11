@@ -9,10 +9,10 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
-    TxStorage = #{
+    Accounts = #{
         id => folio_tx_storage,
-        start => {folio_tx_storage, start_link, []}
+        start => {folio_accounts, start_link, []}
     },
 
-    Procs = [TxStorage],
+    Procs = [Accounts],
     {ok, {{one_for_one, 1, 5}, Procs}}.

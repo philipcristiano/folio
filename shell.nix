@@ -18,10 +18,14 @@ in stdenv.mkDerivation {
                   pkgs.erlangR25
                   pkgs.wget
 
+                  pkgs.foreman
+                  pkgs.postgresql
+
                   pkgs.nodejs
 
                 ] ++ extraInputs;
   shellHook = ''
+      export PGDATA=$PWD/pgdata
       cd ui
       npm install
       cd ..

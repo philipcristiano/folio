@@ -9,8 +9,12 @@
 
 start(_Type, _Args) ->
     App = folio,
-    {ok, Pid} = folio_sup:start_link(),
     IsLocalDev = application:get_env(App, local_dev, true),
+
+    % Setup database
+    fdb:run(fdb:schema()),
+
+    {ok, Pid} = folio_sup:start_link(),
 
     ok = init_folio_modules(),
 

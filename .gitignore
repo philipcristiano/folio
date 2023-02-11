@@ -25,3 +25,6 @@ _checkouts/
 
 # erlang.mk
 .erlang.mk
+
+# Postgres
+pgdata

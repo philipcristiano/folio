@@ -36,3 +36,7 @@ erlfmt:
 
 erlfmt_check:
 	./rebar3 fmt --check
+
+.PHONY: services
+services:
+	foreman start -f Procfile.dev

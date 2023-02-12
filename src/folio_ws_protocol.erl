@@ -91,14 +91,6 @@ handle_data(Msg, Data, State = #state{username = undefined}) ->
         data => Data
     }),
     {ok, State};
-handle_data(<<"start">>, _Data, State) ->
-    Self = self(),
-    Callback = fun(Msg) ->
-        Self ! {sync, Msg}
-    end,
-
-    erlang:spawn(folio_coinbase_api, run, [Callback]),
-    {ok, State};
 handle_data(What, Data, State) ->
     ?LOG_INFO(#{
         what => "Unhandled frame",

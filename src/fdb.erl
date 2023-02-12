@@ -2,12 +2,22 @@
 
 -include_lib("kernel/include/logger.hrl").
 
--export([schema/0, run/1]).
+-export([connect/0, schema/0, run/2]).
 
 % -type user() :: #{
 %     id := user_id(),
 %     org_id := binary()
 % }.
+
+connect() ->
+    {ok, Conn} = epgsql:connect(#{
+        host => "localhost",
+        username => "folio_admin",
+        password => "pass",
+        database => "folio",
+        timeout => 4000
+    }),
+    {ok, Conn}.
 
 schema() ->
     [
@@ -26,8 +36,9 @@ schema() ->
 
 -spec get_table(epgsql:connection(), binary()) -> {ok, list()}.
 get_table(DBRef, Name) ->
+    Statement = "SELECT * FROM information_schema.tables WHERE table_name = $1",
     {ok, C, D} = epgsql:equery(
-        DBRef, "select * from information_schema.tables where table_name = $1", [Name]
+        DBRef, Statement, [Name]
     ),
     {ok, serialise(C, D)}.
 
@@ -39,16 +50,7 @@ get_table_columns(DBRef, Name) ->
     ),
     {ok, serialise(C, D)}.
 
-run(Schema) ->
-    {ok, Conn} = epgsql:connect(#{
-        host => "localhost",
-        username => "folio_admin",
-        password => "pass",
-        database => "folio",
-        timeout => 4000
-    }),
-    {ok, C, D} = epgsql:squery(Conn, "SELECT 1 as c;"),
-    io:format("Returned ~p~n", [serialise(C, D)]),
+run(Conn, Schema) ->
     StatementGroups = determine_migrations(Conn, Schema),
 
     lists:foreach(
@@ -118,13 +120,6 @@ alter_table_statement(Conn, #{type := table, name := TableName, columns := Cols}
         to_remove => ToRemove
     }),
     AddStatements.
-
-% ColStrings = lists:map( fun create_table_column/1, Cols),
-% ColString = lists:join(", ", ColStrings),
-
-% Create = ["CREATE TABLE ", TableName, "( ", ColString, " );"],
-% Statement = lists:flatten(Create),
-% Statement.
 
 create_table_column(#{name := Name, type := Type}) ->
     [Name, " ", Type].

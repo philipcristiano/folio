@@ -12,7 +12,6 @@
     let json = await response.json()
     if (response.ok) {
         accounts = json.accounts;
-        message = "Refresh page: TODO: don't require refresh";
     } else {
         message = json.message;
     };

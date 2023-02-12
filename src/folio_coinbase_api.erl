@@ -4,31 +4,12 @@
 
 -export([folio_init/0]).
 -export([accounts_init/0, accounts/1]).
--export([run/1]).
 -export([transactions/2]).
 -export([user/0]).
 
 folio_init() ->
     ok = throttle:setup(?MODULE, 10, per_second),
     ok.
-
-run(Callback) ->
-    case user() of
-        {error, _} -> ok;
-        {ok, User} -> Callback({user, User})
-    end,
-    F = fun({accounts, CallbackAccounts}) ->
-        Callback({accounts, CallbackAccounts}),
-
-        ?LOG_DEBUG(#{
-            what => "Can sync transactions here"
-        }),
-        H = fun(Account) ->
-            erlang:spawn(folio_coinbase_api, transactions, [Account, Callback])
-        end,
-        lists:foreach(H, CallbackAccounts)
-    end,
-    accounts(F).
 
 user() ->
     case request(<<"/v2/user">>) of
@@ -42,7 +23,8 @@ user() ->
 accounts_init() ->
     #{next_uri => <<"/v2/accounts?limit=100">>}.
 
--spec accounts(any()) -> {complete, list()} | {incomplete, list()}.
+-type sync_completeness() :: complete | incomplete.
+-spec accounts(any()) -> {sync_completeness(), list(), map()}.
 accounts(State = #{next_uri := NextURI}) ->
     {ok, AccountResp} = request(NextURI),
 

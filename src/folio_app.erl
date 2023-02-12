@@ -12,7 +12,8 @@ start(_Type, _Args) ->
     IsLocalDev = application:get_env(App, local_dev, true),
 
     % Setup database
-    fdb:run(fdb:schema()),
+    {ok, Conn} = fdb:connect(),
+    fdb:run(Conn, fdb:schema()),
 
     {ok, Pid} = folio_sup:start_link(),
 

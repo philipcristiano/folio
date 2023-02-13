@@ -26,10 +26,14 @@ schema() ->
             name => "example_table",
             columns => [
                 #{name => "id", type => "integer"},
-                #{name => "data", type => "text"},
-                #{name => "next_column_a", type => "boolean"},
-                #{name => "next_column_b", type => "boolean"},
-                #{name => "next_column_c", type => "boolean"}
+                #{name => "data", type => "text"}
+            ]
+        },
+        #{
+            type => table,
+            name => "table_to_drop",
+            columns => [
+                #{name => "id", type => "integer"}
             ]
         }
     ].
@@ -42,18 +46,47 @@ get_table(DBRef, Name) ->
     ),
     {ok, serialise(C, D)}.
 
+get_tables(DBRef) ->
+    Statement =
+        "SELECT * FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog');",
+    {ok, C, D} = epgsql:squery(DBRef, Statement),
+    {ok, serialise(C, D)}.
+
 get_table_columns(DBRef, Name) ->
     {ok, C, D} = epgsql:equery(
         DBRef,
-        "select * from information_schema.columns where table_name = $1 ORDER BY \"ordinal_position\" ASC",
+        "SELECT * FROM information_schema.columns WHERE table_name = $1 ORDER BY \"ordinal_position\" ASC",
         [Name]
     ),
     {ok, serialise(C, D)}.
 
 run(Conn, Schema) ->
-    Statements = determine_migrations(Conn, Schema),
+    DefinedTables = lists:filter(
+        fun(#{type := Type}) when is_atom(Type) ->
+            Type == table
+        end,
+        Schema
+    ),
 
-    io:format("Statements ~p~n", [Statements]),
+    {ok, ExistingTables} = get_tables(Conn),
+    {_, ToRemove} = set_differences(
+        DefinedTables,
+        fun(#{name := N}) -> erlang:list_to_binary(N) end,
+        ExistingTables,
+        fun(#{table_name := N}) -> N end
+    ),
+
+    CreateAndModifyStatements = determine_migrations(Conn, Schema),
+    DropTableStatements = lists:map(
+        fun(#{table_name := NBin}) ->
+            Name = erlang:binary_to_list(NBin),
+            drop_table_statement(Name)
+        end,
+        ToRemove
+    ),
+
+    Statements = CreateAndModifyStatements ++ DropTableStatements,
+
     lists:foreach(
         fun(Statement) ->
             ?LOG_INFO(#{
@@ -123,7 +156,6 @@ alter_table_statement(Conn, #{type := table, name := TableName, columns := Cols}
         to_remove => ToRemove,
         to_remove_statements => DropColumnsStatements
     }),
-    io:format("Columns ~p~n", [{AddColumnsStatements, DropColumnsStatements}]),
     AddColumnsStatements ++ DropColumnsStatements.
 
 create_table_column(#{name := Name, type := Type}) ->
@@ -133,6 +165,9 @@ add_table_column(TableName, #{name := ColName, type := ColType}) ->
     lists:flatten(["ALTER TABLE ", TableName, " ADD COLUMN ", ColName, " ", ColType, ";"]).
 drop_table_column(TableName, #{name := ColName}) ->
     lists:flatten(["ALTER TABLE ", TableName, " DROP COLUMN ", ColName, ";"]).
+
+drop_table_statement(TableName) ->
+    lists:flatten(["DROP TABLE ", TableName, ";"]).
 
 serialise(Columns, Datas) ->
     Keys = lists:map(

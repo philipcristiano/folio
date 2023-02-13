@@ -51,29 +51,24 @@ get_table_columns(DBRef, Name) ->
     {ok, serialise(C, D)}.
 
 run(Conn, Schema) ->
-    StatementGroups = determine_migrations(Conn, Schema),
+    Statements = determine_migrations(Conn, Schema),
 
+    io:format("Statements ~p~n", [Statements]),
     lists:foreach(
-        fun(Statements) ->
-            ValidStatements = lists:filter(fun is_list/1, Statements),
-            lists:foreach(
-                fun(Statement) ->
-                    ?LOG_INFO(#{
-                        message => "Database migration",
-                        statement => Statement
-                    }),
-                    {ok, _, _} = epgsql:squery(Conn, Statement)
-                end,
-                ValidStatements
-            )
+        fun(Statement) ->
+            ?LOG_INFO(#{
+                message => "Database migration",
+                statement => Statement
+            }),
+            {ok, _, _} = epgsql:squery(Conn, Statement)
         end,
-        StatementGroups
+        Statements
     ),
 
     ok.
 
 determine_migrations(Conn, Schema) ->
-    lists:map(fun(I) -> determine_migration(Conn, I) end, Schema).
+    lists:foldl(fun(I, Acc) -> Acc ++ determine_migration(Conn, I) end, [], Schema).
 
 determine_migration(Conn, Schema = #{type := table, name := TableName}) ->
     {ok, Data} = get_table(Conn, TableName),
@@ -83,7 +78,7 @@ determine_migration(Conn, Schema = #{type := table, name := TableName}) ->
         info => Data
     }),
     case Data of
-        [] -> [create_table_statement(Conn, Schema)];
+        [] -> create_table_statement(Conn, Schema);
         [_] -> alter_table_statement(Conn, Schema)
     end.
 
@@ -93,7 +88,7 @@ create_table_statement(_Conn, #{type := table, name := TableName, columns := Col
 
     Create = ["CREATE TABLE ", TableName, "( ", ColString, " );"],
     Statement = lists:flatten(Create),
-    Statement.
+    [Statement].
 
 % Column ordering is not preserved if multiple columns are added
 alter_table_statement(Conn, #{type := table, name := TableName, columns := Cols}) ->
@@ -105,27 +100,39 @@ alter_table_statement(Conn, #{type := table, name := TableName, columns := Cols}
         fun(#{column_name := N}) -> N end
     ),
 
-    AddStatements = lists:map(
+    AddColumnsStatements = lists:map(
         fun(Col) ->
             add_table_column(TableName, Col)
         end,
         ToAdd
     ),
 
+    DropColumnsStatements = lists:map(
+        fun(_DBCol = #{column_name := Name}) ->
+            Col = #{name => erlang:binary_to_list(Name)},
+            drop_table_column(TableName, Col)
+        end,
+        ToRemove
+    ),
+
     ?LOG_INFO(#{
         message => alter_table_statement,
         table => TableName,
         to_add => ToAdd,
-        to_add_statements => AddStatements,
-        to_remove => ToRemove
+        to_add_statements => AddColumnsStatements,
+        to_remove => ToRemove,
+        to_remove_statements => DropColumnsStatements
     }),
-    AddStatements.
+    io:format("Columns ~p~n", [{AddColumnsStatements, DropColumnsStatements}]),
+    AddColumnsStatements ++ DropColumnsStatements.
 
 create_table_column(#{name := Name, type := Type}) ->
     [Name, " ", Type].
 
 add_table_column(TableName, #{name := ColName, type := ColType}) ->
     lists:flatten(["ALTER TABLE ", TableName, " ADD COLUMN ", ColName, " ", ColType, ";"]).
+drop_table_column(TableName, #{name := ColName}) ->
+    lists:flatten(["ALTER TABLE ", TableName, " DROP COLUMN ", ColName, ";"]).
 
 serialise(Columns, Datas) ->
     Keys = lists:map(

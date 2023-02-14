@@ -223,3 +223,30 @@ table_exists_delete_column_test() ->
     ?assertMatch([Conn, "ALTER TABLE test_table DROP COLUMN remove_column;"], SqueryArgs),
 
     folio_meck:unload(?MOCK_MODS).
+
+insert_test() ->
+    folio_meck:load(?MOCK_MODS),
+    Conn = make_ref(),
+
+    ColumnRet = [{column, <<"foo">>}, {column, <<"one">>}, {id, <<"id">>}],
+    DataRet = [{<<"bar">>, 1, <<"retid">>}],
+
+    Statement = "INSERT INTO example_table (foo, one) VALUES ($1, $2) RETURNING *;",
+    ok = meck:expect(epgsql, equery, [
+        {
+            [
+                Conn,
+                '_',
+                [<<"bar">>, 1]
+            ],
+            {ok, 1, ColumnRet, DataRet}
+        }
+    ]),
+
+    Ret = ?MUT:insert(Conn, example_table, #{foo => <<"bar">>, one => 1}),
+
+    [{equery, Args}] = folio_meck:history_calls(epgsql),
+
+    ?assertMatch({ok, #{foo := <<"bar">>, one := 1, id := <<"retid">>}}, Ret),
+    ?assertMatch([Conn, Statement, [<<"bar">>, 1]], Args),
+    folio_meck:unload(?MOCK_MODS).

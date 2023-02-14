@@ -3,6 +3,7 @@
 -include_lib("kernel/include/logger.hrl").
 
 -export([connect/0, schema/0, run/2]).
+-export([insert/3]).
 
 % -type user() :: #{
 %     id := user_id(),
@@ -23,11 +24,21 @@ schema() ->
     [
         #{
             type => table,
-            name => "example_table",
+            name => "example_uid_table",
             columns => [
-                #{name => "id", type => "integer"},
+                #{name => "id", type => "uuid"},
                 #{name => "data", type => "text"}
-            ]
+            ],
+            primary_key => ["id"]
+        },
+        #{
+            type => table,
+            name => "example_uidd_table",
+            columns => [
+                #{name => "id", type => "uuid"},
+                #{name => "data", type => "text"}
+            ],
+            primary_key => ["id", "data"]
         },
         #{
             type => table,
@@ -99,6 +110,34 @@ run(Conn, Schema) ->
     ),
 
     ok.
+
+-spec insert(epgsql:connection(), atom(), map()) -> {ok, map()}.
+insert(Conn, Table, Data) when is_map(Data) ->
+    Fun = fun(K, V, {Count, Keys, Pos, Vals}) ->
+        FKeys = Keys ++ [erlang:atom_to_list(K)],
+        FCount = Count + 1,
+        FPos = Pos ++ ["$" ++ erlang:integer_to_list(FCount)],
+        FVal = Vals ++ [V],
+        {FCount, FKeys, FPos, FVal}
+    end,
+    {_C, SQLKeys, SQLPos, SQLVals} = maps:fold(Fun, {0, [], [], []}, Data),
+
+    KeysStatement = ["(", lists:join(", ", SQLKeys), ")"],
+    PosStatement = ["(", lists:join(", ", SQLPos), ")"],
+    Statement = lists:flatten([
+        "INSERT INTO ",
+        erlang:atom_to_list(Table),
+        " ",
+        KeysStatement,
+        " VALUES ",
+        PosStatement,
+        " RETURNING *;"
+    ]),
+    case epgsql:equery(Conn, Statement, SQLVals) of
+        {ok, 1, RetCols, RetData} ->
+            [RetMap] = serialise(RetCols, RetData),
+            {ok, RetMap}
+    end.
 
 determine_migrations(Conn, Schema) ->
     lists:foldl(fun(I, Acc) -> Acc ++ determine_migration(Conn, I) end, [], Schema).

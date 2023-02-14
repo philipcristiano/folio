@@ -3,7 +3,7 @@
 -include_lib("kernel/include/logger.hrl").
 
 -export([connect/0, schema/0, run/2]).
--export([insert/3]).
+-export([insert/3, select/3]).
 
 % -type user() :: #{
 %     id := user_id(),
@@ -137,6 +137,32 @@ insert(Conn, Table, Data) when is_map(Data) ->
         {ok, 1, RetCols, RetData} ->
             [RetMap] = serialise(RetCols, RetData),
             {ok, RetMap}
+    end.
+
+-spec select(epgsql:connection(), atom(), map()) -> {ok, list(map())}.
+select(Conn, Table, Data) when is_map(Data) ->
+    Fun = fun(K, V, {Count, Statements, Vals}) ->
+        FCount = Count + 1,
+        Statement = lists:flatten([
+            erlang:atom_to_list(K), " = ", "$", erlang:integer_to_list(FCount)
+        ]),
+        FStatement = Statements ++ [Statement],
+        FVal = Vals ++ [V],
+        {FCount, FStatement, FVal}
+    end,
+    {_C, QueryStatements, SQLVals} = maps:fold(Fun, {0, [], []}, Data),
+    QueryStatement = lists:join(" AND ", QueryStatements),
+
+    Statement = lists:flatten([
+        "SELECT * FROM ",
+        erlang:atom_to_list(Table),
+        " WHERE ",
+        QueryStatement,
+        ";"
+    ]),
+    case epgsql:equery(Conn, Statement, SQLVals) of
+        {ok, _, RetCols, RetData} ->
+            {ok, serialise(RetCols, RetData)}
     end.
 
 determine_migrations(Conn, Schema) ->

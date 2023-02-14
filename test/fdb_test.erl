@@ -42,6 +42,44 @@ create_table_test() ->
 
     folio_meck:unload(?MOCK_MODS).
 
+create_table_with_primary_key_test() ->
+    folio_meck:load(?MOCK_MODS),
+
+    TableName = "test_table",
+
+    Conn = make_ref(),
+    TestTableSchema = #{
+        type => table,
+        name => TableName,
+        columns => [
+            #{
+                name => "id",
+                type =>
+                    "integer"
+            }
+        ],
+        primary_key => ["id"]
+    },
+
+    ok = meck:expect(epgsql, equery, [Conn, ?STATEMENT_GET_TABLE, [TableName]], {ok, [], []}),
+
+    ok = meck:expect(epgsql, squery, [
+        {[Conn, ?STATEMENT_TABLES], {ok, [], []}},
+        {[Conn, '_'], {ok, [], []}}
+    ]),
+
+    ok = ?MUT:run(Conn, [TestTableSchema]),
+
+    [
+        {squery, [Conn, ?STATEMENT_TABLES]},
+        {equery, [Conn, ?STATEMENT_GET_TABLE, _GetTableArg]},
+        {squery, SqueryArgs}
+    ] = folio_meck:history_calls(epgsql),
+
+    ?assertMatch([Conn, "CREATE TABLE test_table( id integer, PRIMARY KEY ( id ) );"], SqueryArgs),
+
+    folio_meck:unload(?MOCK_MODS).
+
 drop_table_test() ->
     folio_meck:load(?MOCK_MODS),
 

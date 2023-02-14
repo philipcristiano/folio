@@ -115,9 +115,12 @@ determine_migration(Conn, Schema = #{type := table, name := TableName}) ->
         [_] -> alter_table_statement(Conn, Schema)
     end.
 
-create_table_statement(_Conn, #{type := table, name := TableName, columns := Cols}) ->
+create_table_statement(_Conn, TableSchema = #{type := table, name := TableName, columns := Cols}) ->
     ColStrings = lists:map(fun create_table_column/1, Cols),
-    ColString = lists:join(", ", ColStrings),
+    PrimaryKey = primary_key(TableSchema),
+
+    TableComponents = ColStrings ++ PrimaryKey,
+    ColString = lists:join(", ", TableComponents),
 
     Create = ["CREATE TABLE ", TableName, "( ", ColString, " );"],
     Statement = lists:flatten(Create),
@@ -160,6 +163,15 @@ alter_table_statement(Conn, #{type := table, name := TableName, columns := Cols}
 
 create_table_column(#{name := Name, type := Type}) ->
     [Name, " ", Type].
+
+primary_key(#{type := table, primary_key := KeyElements}) ->
+    ElementsString = lists:join(", ", KeyElements),
+
+    io:format("Elements ~p~n", [{KeyElements, ElementsString}]),
+    S = ["PRIMARY KEY ( " ++ ElementsString ++ " )"],
+    lists:join("", S);
+primary_key(#{type := table}) ->
+    [].
 
 add_table_column(TableName, #{name := ColName, type := ColType}) ->
     lists:flatten(["ALTER TABLE ", TableName, " ADD COLUMN ", ColName, " ", ColType, ";"]).

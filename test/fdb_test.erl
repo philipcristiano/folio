@@ -224,14 +224,15 @@ table_exists_delete_column_test() ->
 
     folio_meck:unload(?MOCK_MODS).
 
-insert_test() ->
+write_test() ->
     folio_meck:load(?MOCK_MODS),
     Conn = make_ref(),
 
     ColumnRet = [{column, <<"foo">>}, {column, <<"one">>}, {id, <<"id">>}],
     DataRet = [{<<"bar">>, 1, <<"retid">>}],
 
-    Statement = "INSERT INTO example_table (foo, one) VALUES ($1, $2) RETURNING *;",
+    Statement =
+        "INSERT INTO example_table (foo, one) VALUES ($1, $2) ON CONFLICT ON CONSTRAINT example_table_pkey DO UPDATE set foo = $1, one = $2 RETURNING *;",
     ok = meck:expect(epgsql, equery, [
         {
             [
@@ -243,7 +244,7 @@ insert_test() ->
         }
     ]),
 
-    Ret = ?MUT:insert(Conn, example_table, #{foo => <<"bar">>, one => 1}),
+    Ret = ?MUT:write(Conn, example_table, #{foo => <<"bar">>, one => 1}),
 
     [{equery, Args}] = folio_meck:history_calls(epgsql),
 
@@ -266,7 +267,7 @@ select_test() ->
                 '_',
                 [<<"bar">>, 1]
             ],
-            {ok, 1, ColumnRet, DataRet}
+            {ok, ColumnRet, DataRet}
         }
     ]),
 

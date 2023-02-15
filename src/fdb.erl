@@ -3,7 +3,7 @@
 -include_lib("kernel/include/logger.hrl").
 
 -export([connect/0, schema/0, run/2]).
--export([insert/3, select/3]).
+-export([write/3, select/3]).
 
 % -type user() :: #{
 %     id := user_id(),
@@ -22,6 +22,15 @@ connect() ->
 
 schema() ->
     [
+        #{
+            type => table,
+            name => "test_table",
+            columns => [
+                #{name => "id", type => "integer"},
+                #{name => "data", type => "text"}
+            ],
+            primary_key => ["id"]
+        },
         #{
             type => table,
             name => "example_uid_table",
@@ -111,8 +120,8 @@ run(Conn, Schema) ->
 
     ok.
 
--spec insert(epgsql:connection(), atom(), map()) -> {ok, map()}.
-insert(Conn, Table, Data) when is_map(Data) ->
+-spec write(epgsql:connection(), atom(), map()) -> {ok, map()}.
+write(Conn, Table, Data) when is_map(Data) ->
     Fun = fun(K, V, {Count, Keys, Pos, Vals}) ->
         FKeys = Keys ++ [erlang:atom_to_list(K)],
         FCount = Count + 1,
@@ -122,8 +131,20 @@ insert(Conn, Table, Data) when is_map(Data) ->
     end,
     {_C, SQLKeys, SQLPos, SQLVals} = maps:fold(Fun, {0, [], [], []}, Data),
 
+    PKey = lists:flatten([erlang:atom_to_list(Table), "_pkey"]),
+
     KeysStatement = ["(", lists:join(", ", SQLKeys), ")"],
     PosStatement = ["(", lists:join(", ", SQLPos), ")"],
+
+    KVs = lists:zip(SQLKeys, SQLPos),
+    UpdateStatements = lists:map(
+        fun({K, V}) ->
+            lists:flatten([K, " = ", V])
+        end,
+        KVs
+    ),
+    UpdateStatement = lists:join(", ", UpdateStatements),
+
     Statement = lists:flatten([
         "INSERT INTO ",
         erlang:atom_to_list(Table),
@@ -131,6 +152,10 @@ insert(Conn, Table, Data) when is_map(Data) ->
         KeysStatement,
         " VALUES ",
         PosStatement,
+        " ON CONFLICT ON CONSTRAINT ",
+        PKey,
+        " DO UPDATE set ",
+        UpdateStatement,
         " RETURNING *;"
     ]),
     case epgsql:equery(Conn, Statement, SQLVals) of
@@ -161,7 +186,7 @@ select(Conn, Table, Data) when is_map(Data) ->
         ";"
     ]),
     case epgsql:equery(Conn, Statement, SQLVals) of
-        {ok, _, RetCols, RetData} ->
+        {ok, RetCols, RetData} ->
             {ok, serialise(RetCols, RetData)}
     end.
 

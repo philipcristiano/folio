@@ -32,6 +32,8 @@
     <div>
         { account.symbol }
         { account.balance }
+        { account.balance_amount }
+        { account.balance_currency }
     </div>
     {/each}
 

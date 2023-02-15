@@ -39,8 +39,24 @@ handle_req(
 ) ->
     ?LOG_INFO(#{message => getAccounts}),
 
-    {ok, Accounts} = folio_exchange_integration:integration_accounts(folio_coinbase_api),
+    %{ok, Accounts} = folio_exchange_integration:integration_accounts(folio_coinbase_api),
+    %ok = write_coinbase_accounts(Accounts),
+    {ok, C} = fdb:connect(),
+    {ok, Accounts} = fdb:select(C, coinbase_accounts, #{}),
+
     {Req, 200, #{accounts => Accounts}, State}.
 
 post_req(_Response, _State) ->
+    ok.
+
+write_coinbase_accounts(Accounts) ->
+    {ok, C} = fdb:connect(),
+    lists:foreach(
+        fun(#{id := ID, balance := B, symbol := S}) ->
+            Data = #{id => ID, balance_amount => B, balance_currency => S},
+            ?LOG_INFO(#{message => write_cb_account, data => Data}),
+            {ok, _} = fdb:write(C, coinbase_accounts, Data)
+        end,
+        Accounts
+    ),
     ok.

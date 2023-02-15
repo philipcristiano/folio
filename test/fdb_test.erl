@@ -278,3 +278,30 @@ select_test() ->
     ?assertMatch({ok, [#{foo := <<"bar">>, one := 1, id := <<"retid">>}]}, Ret),
     ?assertMatch([Conn, Statement, [<<"bar">>, 1]], Args),
     folio_meck:unload(?MOCK_MODS).
+
+select_all_table_test() ->
+    folio_meck:load(?MOCK_MODS),
+    Conn = make_ref(),
+
+    ColumnRet = [{column, <<"foo">>}, {column, <<"one">>}, {id, <<"id">>}],
+    DataRet = [{<<"bar">>, 1, <<"retid">>}],
+
+    Statement = "SELECT * FROM example_table;",
+    ok = meck:expect(epgsql, equery, [
+        {
+            [
+                Conn,
+                '_',
+                []
+            ],
+            {ok, ColumnRet, DataRet}
+        }
+    ]),
+
+    Ret = ?MUT:select(Conn, example_table, #{}),
+
+    [{equery, Args}] = folio_meck:history_calls(epgsql),
+
+    ?assertMatch({ok, [#{foo := <<"bar">>, one := 1, id := <<"retid">>}]}, Ret),
+    ?assertMatch([Conn, Statement, []], Args),
+    folio_meck:unload(?MOCK_MODS).

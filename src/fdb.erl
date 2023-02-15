@@ -24,6 +24,16 @@ schema() ->
     [
         #{
             type => table,
+            name => "coinbase_accounts",
+            columns => [
+                #{name => "id", type => "text"},
+                #{name => "balance_amount", type => "numeric"},
+                #{name => "balance_currency", type => "text"}
+            ],
+            primary_key => ["id"]
+        },
+        #{
+            type => table,
             name => "test_table",
             columns => [
                 #{name => "id", type => "integer"},
@@ -177,12 +187,16 @@ select(Conn, Table, Data) when is_map(Data) ->
     end,
     {_C, QueryStatements, SQLVals} = maps:fold(Fun, {0, [], []}, Data),
     QueryStatement = lists:join(" AND ", QueryStatements),
+    Where =
+        case QueryStatement of
+            [] -> "";
+            Else -> [" WHERE ", Else]
+        end,
 
     Statement = lists:flatten([
         "SELECT * FROM ",
         erlang:atom_to_list(Table),
-        " WHERE ",
-        QueryStatement,
+        Where,
         ";"
     ]),
     case epgsql:equery(Conn, Statement, SQLVals) of
@@ -257,7 +271,6 @@ create_table_column(#{name := Name, type := Type}) ->
 primary_key(#{type := table, primary_key := KeyElements}) ->
     ElementsString = lists:join(", ", KeyElements),
 
-    io:format("Elements ~p~n", [{KeyElements, ElementsString}]),
     S = ["PRIMARY KEY ( " ++ ElementsString ++ " )"],
     lists:join("", S);
 primary_key(#{type := table}) ->

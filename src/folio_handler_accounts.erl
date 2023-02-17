@@ -5,12 +5,12 @@
 -export([init/2, trails/0, handle_req/4, post_req/2]).
 
 trails() ->
-    GetMetadata = folio_http:make_get(teamsGet, [org_id], return_schema()),
-    % PostMetadata = folio_http:make_json_post(teamCreate, [org_id], create_schema()),
-    % Metadata = maps:merge(GetMetadata, PostMetadata),
+    GetMetadata = folio_http:make_get(getAccounts, [org_id], return_schema()),
+    PostMetadata = folio_http:make_json_post(syncAccounts, [org_id], #{}),
+    Metadata = maps:merge(GetMetadata, PostMetadata),
     State = #{},
     [
-        trails:trail("/accounts", ?MODULE, State, GetMetadata)
+        trails:trail("/accounts", ?MODULE, State, Metadata)
     ].
 
 return_schema() ->
@@ -41,22 +41,18 @@ handle_req(
 
     %{ok, Accounts} = folio_exchange_integration:integration_accounts(folio_coinbase_api),
     %ok = write_coinbase_accounts(Accounts),
-    {ok, C} = fdb:connect(),
-    {ok, Accounts} = fdb:select(C, coinbase_accounts, #{}),
+    {ok, Accounts} = folio_accounts:account_balances(),
 
-    {Req, 200, #{accounts => Accounts}, State}.
+    {Req, 200, #{accounts => Accounts}, State};
+handle_req(
+    Req = #{method := <<"POST">>},
+    _Params,
+    _Body,
+    State
+) ->
+    ?LOG_INFO(#{message => syncAccounts}),
+
+    {Req, 202, #{status => ok}, State}.
 
 post_req(_Response, _State) ->
-    ok.
-
-write_coinbase_accounts(Accounts) ->
-    {ok, C} = fdb:connect(),
-    lists:foreach(
-        fun(#{id := ID, balance := B, symbol := S}) ->
-            Data = #{id => ID, balance_amount => B, balance_currency => S},
-            ?LOG_INFO(#{message => write_cb_account, data => Data}),
-            {ok, _} = fdb:write(C, coinbase_accounts, Data)
-        end,
-        Accounts
-    ),
     ok.

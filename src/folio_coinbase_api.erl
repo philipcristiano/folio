@@ -129,16 +129,10 @@ transaction_path(AccountId) ->
     <<<<"/v2/accounts/">>/binary, AccountId/binary, <<"/transactions">>/binary>>.
 
 coinbase_credentials() ->
-    {ok, AppConfig} = application:get_env(folio, credentials),
-    CoinbaseConfig = maps:get(coinbase, AppConfig, #{}),
-    Key = maps:get(key, CoinbaseConfig),
-    Sec = maps:get(secret, CoinbaseConfig),
+    #{key := Key, secret := Secret} = folio_credentials_store:get_credentials(coinbase),
+    {Key, Secret}.
 
-    {Key, Sec}.
-
--spec request(binary()) -> {ok, map()} | {error, binary()}.
 -spec request(binary(), list()) -> {ok, map()} | {error, binary()}.
-
 request(Path, QParams) ->
     QueryString =
         case hackney_url:qs(QParams) of
@@ -147,6 +141,8 @@ request(Path, QParams) ->
         end,
     PathQS = <<Path/binary, QueryString/binary>>,
     request(PathQS).
+
+-spec request(binary()) -> {ok, map()} | {error, binary()}.
 request(PathQS) ->
     BasePath = <<"https://api.coinbase.com">>,
 

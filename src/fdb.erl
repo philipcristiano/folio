@@ -27,44 +27,18 @@ schema() ->
             name => "coinbase_accounts",
             columns => [
                 #{name => "id", type => "text"},
-                #{name => "balance_amount", type => "numeric"},
-                #{name => "balance_currency", type => "text"}
+                #{name => "symbol", type => "text"}
             ],
             primary_key => ["id"]
         },
         #{
             type => table,
-            name => "test_table",
+            name => "coinbase_account_balances",
             columns => [
-                #{name => "id", type => "integer"},
-                #{name => "data", type => "text"}
+                #{name => "account_id", type => "text"},
+                #{name => "balance", type => "numeric"}
             ],
-            primary_key => ["id"]
-        },
-        #{
-            type => table,
-            name => "example_uid_table",
-            columns => [
-                #{name => "id", type => "uuid"},
-                #{name => "data", type => "text"}
-            ],
-            primary_key => ["id"]
-        },
-        #{
-            type => table,
-            name => "example_uidd_table",
-            columns => [
-                #{name => "id", type => "uuid"},
-                #{name => "data", type => "text"}
-            ],
-            primary_key => ["id", "data"]
-        },
-        #{
-            type => table,
-            name => "table_to_drop",
-            columns => [
-                #{name => "id", type => "integer"}
-            ]
+            primary_key => ["account_id"]
         }
     ].
 
@@ -174,8 +148,8 @@ write(Conn, Table, Data) when is_map(Data) ->
             {ok, RetMap}
     end.
 
--spec select(epgsql:connection(), atom(), map()) -> {ok, list(map())}.
-select(Conn, Table, Data) when is_map(Data) ->
+-spec select(epgsql:connection(), atom() | list(), map() | list()) -> {ok, list(map())}.
+select(Conn, Table, Data) when is_atom(Table), is_map(Data) ->
     Fun = fun(K, V, {Count, Statements, Vals}) ->
         FCount = Count + 1,
         Statement = lists:flatten([
@@ -199,7 +173,9 @@ select(Conn, Table, Data) when is_map(Data) ->
         Where,
         ";"
     ]),
-    case epgsql:equery(Conn, Statement, SQLVals) of
+    select(Conn, Statement, SQLVals);
+select(Conn, Statement, PositionalValues) when is_list(Statement), is_list(PositionalValues) ->
+    case epgsql:equery(Conn, Statement, PositionalValues) of
         {ok, RetCols, RetData} ->
             {ok, serialise(RetCols, RetData)}
     end.

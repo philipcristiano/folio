@@ -2,9 +2,11 @@
 
 -include_lib("kernel/include/logger.hrl").
 
+-behavior(folio_exchange_integration).
+
 -export([folio_init/0]).
 -export([accounts_init/0, accounts/1]).
--export([transactions/2]).
+-export([account_transactions_init/1, account_transactions/1]).
 -export([user/0]).
 
 folio_init() ->
@@ -44,39 +46,29 @@ accounts(State = #{next_uri := NextURI}) ->
     FAccounts = lists:map(fun cb_to_account/1, Accounts),
     {Complete, FAccounts, NewState}.
 
--spec transactions(map(), function()) -> ok.
-transactions(Account = #{id := AccountID}, Callback) when is_map(Account) ->
-    transactions(AccountID, Callback, <<"">>).
+account_transactions_init(#{id := AccountID}) ->
+    State = #{
+        account_id => AccountID,
+        next_uri => transaction_path(AccountID)
+    },
+    State.
 
--spec transactions(binary(), function(), atom | binary()) -> ok.
-transactions(_AccountID, Callback, StartingAfternull) when is_atom(StartingAfternull) ->
-    Callback({transactions, complete}),
-    ok;
-transactions(AccountID, Callback, StartingAfter) when is_binary(StartingAfter) ->
-    Headers =
-        case StartingAfter of
-            <<"">> -> [limit_header()];
-            Else -> [limit_header(), {<<"starting_after">>, Else}]
-        end,
-    Path = transaction_path(AccountID),
-    {ok, Resp} = request(Path, Headers),
-    Pagination = maps:get(<<"pagination">>, Resp, #{}),
-    NextStartingAfter = maps:get(<<"next_starting_after">>, Pagination, undefined),
+account_transactions(State = #{next_uri := NextURI}) ->
+    {ok, Resp} = request(NextURI),
     Data = maps:get(<<"data">>, Resp),
 
-    % ?LOG_INFO(#{
-    %     what => "Transactions",
-    %     transactions => Data
-    % }),
-    ok =
-        case Data of
-            [] ->
-                ok;
-            _ ->
-                FolioTXs = lists:map(fun cb_to_tx/1, Data),
-                Callback({transactions, FolioTXs})
+    Pagination = maps:get(<<"pagination">>, Resp, #{}),
+    NextNextURI = maps:get(<<"next_uri">>, Pagination, null),
+
+    % Determine if this is complete
+    Complete =
+        case NextNextURI of
+            null -> complete;
+            _ -> incomplete
         end,
-    transactions(AccountID, Callback, NextStartingAfter).
+    FolioTXs = lists:map(fun cb_to_tx/1, Data),
+    NewState = State#{next_uri => NextNextURI},
+    {Complete, FolioTXs, NewState}.
 
 cb_to_account(#{
     <<"id">> := SourceID,
@@ -112,7 +104,7 @@ cb_to_tx(#{<<"type">> := <<"pro_deposit">>, <<"created_at">> := CreatedAt, <<"id
         source_id => SourceID,
         type => deposit
     };
-cb_to_tx(#{<<"type">> := <<"pro_withdraw">>, <<"created_at">> := CreatedAt, <<"id">> := SourceID}) ->
+cb_to_tx(#{<<"type">> := <<"pro_withdrawal">>, <<"created_at">> := CreatedAt, <<"id">> := SourceID}) ->
     #{
         datetime => CreatedAt,
         source_id => SourceID,
@@ -132,18 +124,18 @@ coinbase_credentials() ->
     #{key := Key, secret := Secret} = folio_credentials_store:get_credentials(coinbase),
     {Key, Secret}.
 
--spec request(binary(), list()) -> {ok, map()} | {error, binary()}.
-request(Path, QParams) ->
-    QueryString =
-        case hackney_url:qs(QParams) of
-            <<>> -> <<>>;
-            QS -> <<<<"?">>/binary, QS/binary>>
-        end,
-    PathQS = <<Path/binary, QueryString/binary>>,
-    request(PathQS).
-
 -spec request(binary()) -> {ok, map()} | {error, binary()}.
 request(PathQS) ->
+    request(PathQS, #{attempts_remaining => 3}).
+
+-spec request(binary(), map()) -> {ok, map()} | {error, binary()}.
+request(PathQS, #{attempts_remaining := AR}) when AR =< 0 ->
+    ?LOG_INFO(#{
+        message => "Coinbase request failed",
+        path => PathQS
+    }),
+    {error, "No more attemps remaining"};
+request(PathQS, Opts = #{attempts_remaining := AR}) ->
     BasePath = <<"https://api.coinbase.com">>,
 
     Url = <<BasePath/binary, PathQS/binary>>,
@@ -152,13 +144,15 @@ request(PathQS) ->
     % coinbase_sign requires a timestamp so rate limiting before it can cause
     % signing errors if the request is delayed too long
     Headers = coinbase_sign(get, PathQS),
-    io:format("Headers ~p~n", [{PathQS, Headers}]),
 
-    {ok, _RespCode, _RespHeaders, Body} = hackney:request(get, Url, Headers, [], [with_body]),
-
-    case jsx:is_json(Body) of
-        true -> {ok, jsx:decode(Body, [return_maps])};
-        false -> {error, Body}
+    case hackney:request(get, Url, Headers, [], [with_body]) of
+        {error, timeout} ->
+            request(PathQS, Opts#{attempts_remaining => AR - 1});
+        {ok, _RespCode, _RespHeaders, Body} ->
+            case jsx:is_json(Body) of
+                true -> {ok, jsx:decode(Body, [return_maps])};
+                false -> {error, Body}
+            end
     end.
 
 coinbase_sign(get, Path) ->
@@ -182,12 +176,6 @@ coinbase_sign(get, Path) ->
         {<<"Content-Type">>, <<"application/json">>}
     ],
     Headers.
-
-limit_header() ->
-    limit_header(100).
-
-limit_header(N) ->
-    {<<"limit">>, integer_to_binary(N)}.
 
 rate_limit() ->
     case throttle:check(?MODULE, key) of

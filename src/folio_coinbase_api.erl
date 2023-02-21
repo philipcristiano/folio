@@ -98,6 +98,16 @@ cb_to_tx(#{
         source_id => SourceID,
         type => deposit
     };
+cb_to_tx(#{
+    <<"type">> := <<"fiat_deposit">>,
+    <<"created_at">> := CreatedAt,
+    <<"id">> := SourceID
+}) ->
+    #{
+        datetime => CreatedAt,
+        source_id => SourceID,
+        type => deposit
+    };
 cb_to_tx(#{<<"type">> := <<"pro_deposit">>, <<"created_at">> := CreatedAt, <<"id">> := SourceID}) ->
     #{
         datetime => CreatedAt,
@@ -105,6 +115,12 @@ cb_to_tx(#{<<"type">> := <<"pro_deposit">>, <<"created_at">> := CreatedAt, <<"id
         type => deposit
     };
 cb_to_tx(#{<<"type">> := <<"pro_withdrawal">>, <<"created_at">> := CreatedAt, <<"id">> := SourceID}) ->
+    #{
+        datetime => CreatedAt,
+        source_id => SourceID,
+        type => withdraw
+    };
+cb_to_tx(#{<<"type">> := <<"fiat_withdrawal">>, <<"created_at">> := CreatedAt, <<"id">> := SourceID}) ->
     #{
         datetime => CreatedAt,
         source_id => SourceID,
@@ -137,7 +153,6 @@ request(PathQS, #{attempts_remaining := AR}) when AR =< 0 ->
     {error, "No more attemps remaining"};
 request(PathQS, Opts = #{attempts_remaining := AR}) ->
     BasePath = <<"https://api.coinbase.com">>,
-
     Url = <<BasePath/binary, PathQS/binary>>,
 
     rate_limit(),

@@ -39,6 +39,16 @@ schema() ->
                 #{name => "balance", type => "numeric"}
             ],
             primary_key => ["account_id"]
+        },
+        #{
+            type => table,
+            name => "chain_accounts",
+            columns => [
+                #{name => "address", type => "text"},
+                #{name => "chain", type => "text"},
+                #{name => "type", type => "text"}
+            ],
+            primary_key => ["address", "chain", "type"]
         }
     ].
 

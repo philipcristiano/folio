@@ -5,8 +5,8 @@
 -export([init/2, trails/0, handle_req/4, post_req/2]).
 
 trails() ->
-    GetMetadata = folio_http:make_get(getAccounts, [org_id], return_schema()),
-    PostMetadata = folio_http:make_json_post(syncAccounts, [org_id], #{}),
+    GetMetadata = folio_http:make_get(getAccounts, [], return_schema()),
+    PostMetadata = folio_http:make_json_post(syncAccounts, [], #{}),
     Metadata = maps:merge(GetMetadata, PostMetadata),
     State = #{},
     [
@@ -41,7 +41,10 @@ handle_req(
 
     %{ok, Accounts} = folio_exchange_integration:integration_accounts(folio_coinbase_api),
     %ok = write_coinbase_accounts(Accounts),
-    {ok, Accounts} = folio_accounts:account_balances(),
+    {ok, C} = fdb:connect(),
+    {ok, ExchangeAccounts} = folio_accounts:account_balances(C),
+    {ok, ChainAccounts} = folio_chain_accounts:account_balances(C),
+    Accounts = ExchangeAccounts ++ ChainAccounts,
 
     {Req, 200, #{accounts => Accounts}, State};
 handle_req(

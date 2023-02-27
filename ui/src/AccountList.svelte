@@ -4,6 +4,7 @@
 
   export let accounts = [];
   let message = "";
+  let address = "";
 
   async function getAccounts() {
     let response = await fetch("/accounts", {
@@ -20,6 +21,23 @@
   onMount(() => {
       getAccounts();
   });
+  async function addAddress(e) {
+      const data = {};
+      data["address"] = address;
+      let response = await fetch("/accounts/bitcoin", {
+          method: "POST",
+          headers: {
+              'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data),
+      })
+      let json = await response.json()
+      if (response.ok) {
+          message = "account added"
+      } else {
+          message = json.message;
+      };
+  }
 
 </script>
 
@@ -35,5 +53,8 @@
     </div>
     {/each}
 
+
+    <input bind:value={address} placeholder="enter your bitcoin address">
+    <button type="submit" on:click={addAddress}>Add</button>
 </div>
 

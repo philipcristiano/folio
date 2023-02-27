@@ -25,8 +25,6 @@ user() ->
 accounts_init() ->
     #{next_uri => <<"/v2/accounts?limit=100">>}.
 
--type sync_completeness() :: complete | incomplete.
--spec accounts(any()) -> {sync_completeness(), list(), map()}.
 accounts(State = #{next_uri := NextURI}) ->
     {ok, AccountResp} = request(NextURI),
 

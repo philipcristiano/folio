@@ -95,25 +95,28 @@ handle_call(_Request, _From, State) ->
 handle_cast(sync, State) ->
     {ok, Accounts} = folio_exchange_integration:integration_accounts(folio_coinbase_api),
     ok = write_coinbase_accounts(Accounts),
-    SpanCtx = ?start_span(<<"child">>),
-    Ctx = otel_ctx:get_current(),
+    Parent = ?current_span_ctx,
 
     lists:foreach(
         fun(Acc) ->
             proc_lib:spawn_link(fun() ->
-                otel_ctx:attach(Ctx),
-                ?set_current_span(SpanCtx),
-
-                Transactions = folio_exchange_integration:integration_account_transactions(
-                    folio_coinbase_api, Acc
-                ),
-                ?LOG_INFO(#{
-                    message => account_transactions,
-                    account => Acc,
-                    transactions => Transactions
-                }),
-
-                ?end_span(SpanCtx)
+                %% a new process has a new context so the span created
+                %% by the following `with_span` will have no parent
+                Link = opentelemetry:link(Parent),
+                ?with_span(
+                    <<"coinbase_fetch">>,
+                    #{links => [Link]},
+                    fun(_Ctx) ->
+                        Transactions = folio_exchange_integration:integration_account_transactions(
+                            folio_coinbase_api, Acc
+                        ),
+                        ?LOG_INFO(#{
+                            message => account_transactions,
+                            account => Acc,
+                            transactions => Transactions
+                        })
+                    end
+                )
             end)
         end,
         Accounts

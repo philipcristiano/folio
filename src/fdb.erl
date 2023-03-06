@@ -24,31 +24,41 @@ schema() ->
     [
         #{
             type => table,
-            name => "coinbase_accounts",
+            name => "integrations",
             columns => [
-                #{name => "id", type => "text"},
-                #{name => "symbol", type => "text"}
+                #{name => "id", type => "uuid"},
+                #{name => "name", type => "text"}
             ],
             primary_key => ["id"]
         },
         #{
             type => table,
-            name => "coinbase_account_balances",
+            name => "integration_credentials",
             columns => [
-                #{name => "account_id", type => "text"},
-                #{name => "balance", type => "numeric"}
+                #{name => "integration_id", type => "uuid"},
+                #{name => "credentials", type => "bytea"}
             ],
-            primary_key => ["account_id"]
+            primary_key => ["integration_id"]
         },
         #{
             type => table,
-            name => "chain_accounts",
+            name => "accounts",
             columns => [
-                #{name => "address", type => "text"},
-                #{name => "chain", type => "text"},
-                #{name => "type", type => "text"}
+                #{name => "external_id", type => "text"},
+                #{name => "integration_id", type => "uuid"}
             ],
-            primary_key => ["address", "chain", "type"]
+            primary_key => ["integration_id", "external_id"]
+        },
+        #{
+            type => table,
+            name => "account_balances",
+            columns => [
+                #{name => "integration_id", type => "uuid"},
+                #{name => "external_id", type => "text"},
+                #{name => "symbol", type => "text"},
+                #{name => "balance", type => "numeric"}
+            ],
+            primary_key => ["integration_id", "external_id", "symbol"]
         }
     ].
 

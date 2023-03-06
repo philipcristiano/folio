@@ -10,7 +10,7 @@ trails() ->
     Metadata = maps:merge(GetMetadata, PostMetadata),
     State = #{},
     [
-        trails:trail("/accounts", ?MODULE, State, Metadata)
+        trails:trail(<<"/accounts">>, ?MODULE, State, Metadata)
     ].
 
 return_schema() ->
@@ -41,10 +41,10 @@ handle_req(
 
     %{ok, Accounts} = folio_exchange_integration:integration_accounts(folio_coinbase_api),
     %ok = write_coinbase_accounts(Accounts),
-    {ok, C} = fdb:connect(),
-    {ok, ExchangeAccounts} = folio_accounts:account_balances(C),
-    {ok, ChainAccounts} = folio_chain_accounts:account_balances(C),
-    Accounts = ExchangeAccounts ++ ChainAccounts,
+    %{ok, C} = fdb:connect(),
+    %{ok, ExchangeAccounts} = folio_accounts:account_balances(C),
+    %{ok, ChainAccounts} = folio_chain_accounts:account_balances(C),
+    Accounts = [],
 
     {Req, 200, #{accounts => Accounts}, State};
 handle_req(

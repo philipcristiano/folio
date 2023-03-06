@@ -3,7 +3,7 @@
 -include_lib("kernel/include/logger.hrl").
 -include_lib("opentelemetry_api/include/otel_tracer.hrl").
 
--export([integrations/0]).
+-export([integrations/0, integration_by_name/1, integration_setup_properties/1]).
 -export([integration_accounts/1, integration_account_transactions/2]).
 
 -export_type([state/0]).
@@ -27,7 +27,7 @@
 
 -callback accounts_init() -> state().
 -callback accounts(state()) -> {completeness(), list(account()), state()}.
-
+-callback setup_properties() -> map().
 -callback account_transactions_init(account()) -> state().
 -callback account_transactions(state()) -> {completeness(), list(account_transactions()), state()}.
 
@@ -40,6 +40,23 @@ integrations() ->
             mod => folio_coinbase_api
         }
     ].
+
+-spec integration_by_name(binary()) -> false | map().
+integration_by_name(Name) ->
+    Ints = integrations(),
+    case lists:search(fun(#{name := N}) -> N == Name end, Ints) of
+        {value, V} -> V;
+        _ -> false
+    end.
+
+integration_setup_properties(Name) ->
+    case integration_by_name(Name) of
+        #{mod := Mod} ->
+            Props = Mod:setup_properties(),
+            Props;
+        false ->
+            false
+    end.
 
 integration_accounts(Mod) ->
     InitState = Mod:accounts_init(),

@@ -5,6 +5,7 @@
 -behavior(folio_exchange_integration).
 
 -export([folio_init/0]).
+-export([setup_properties/0]).
 -export([accounts_init/0, accounts/1]).
 -export([account_transactions_init/1, account_transactions/1]).
 -export([user/0]).
@@ -12,6 +13,12 @@
 folio_init() ->
     ok = throttle:setup(?MODULE, 10, per_second),
     ok.
+
+setup_properties() ->
+    #{
+        key => #{},
+        secret => #{}
+    }.
 
 user() ->
     case request(<<"/v2/user">>) of

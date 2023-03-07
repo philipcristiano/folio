@@ -2,7 +2,7 @@
 
 -include_lib("kernel/include/logger.hrl").
 
--export([connect/0, schema/0, run/2]).
+-export([connect/0, close/1, schema/0, run/2]).
 -export([write/3, select/3]).
 
 % -type user() :: #{
@@ -19,6 +19,9 @@ connect() ->
         timeout => 4000
     }),
     {ok, Conn}.
+
+close(C) ->
+    epgsql:close(C).
 
 schema() ->
     [

@@ -25,6 +25,7 @@
         telemetry,
         cowboy_telemetry,
         cowboy,
+        cowboy_swagger,
         specified_handler,
         throttle
     ]},

@@ -66,23 +66,6 @@
       getIntegrationNames();
       getIntegrations();
   });
-  async function addAddress(e) {
-      const data = {};
-      data["address"] = address;
-      let response = await fetch("/accounts/bitcoin", {
-          method: "POST",
-          headers: {
-              'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(data),
-      })
-      let json = await response.json()
-      if (response.ok) {
-          message = "account added"
-      } else {
-          message = json.message;
-      };
-  }
 
 </script>
 
@@ -91,12 +74,14 @@
     <h2> {message} </h2>
     {/if}
 
+    Available integration providers:
     {#each integration_names as addableIntegrationName }
     <div>
         { addableIntegrationName }
     </div>
     {/each}
 
+    Add a new integration:
     {#each integration_setups as addableIntegration }
     <div>
         Name: { addableIntegration.name }
@@ -107,6 +92,7 @@
     </div>
     {/each}
 
+    Current installed integrations:
     {#each integrations as integration (integration.id)}
     <div>
         ID: { integration.id }
@@ -116,8 +102,5 @@
     </div>
     {/each}
 
-
-    <input bind:value={address} placeholder="enter your bitcoin address">
-    <button type="submit" on:click={addAddress}>Add</button>
 </div>
 

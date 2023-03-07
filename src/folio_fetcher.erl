@@ -102,34 +102,38 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({sync, Integration = #{id := _ID, provider_name := _PN}}, State) ->
+    ?LOG_INFO(#{
+        message => "Starting sync",
+        integration => Integration
+    }),
     {ok, Accounts} = folio_integration:fetch_integration_accounts(Integration),
     ok = write_accounts(Integration, Accounts),
-    Parent = ?current_span_ctx,
+    % Parent = ?current_span_ctx,
 
-    lists:foreach(
-        fun(Acc) ->
-            proc_lib:spawn_link(fun() ->
-                %% a new process has a new context so the span created
-                %% by the following `with_span` will have no parent
-                Link = opentelemetry:link(Parent),
-                ?with_span(
-                    <<"folio_fetcher_account_transactions">>,
-                    #{links => [Link]},
-                    fun(_Ctx) ->
-                        Transactions = folio_integration:fetch_integration_account_transactions(
-                            Integration, Acc
-                        ),
-                        ?LOG_INFO(#{
-                            message => account_transactions,
-                            account => Acc,
-                            transactions => Transactions
-                        })
-                    end
-                )
-            end)
-        end,
-        Accounts
-    ),
+    % lists:foreach(
+    %     fun(Acc) ->
+    %         proc_lib:spawn(fun() ->
+    %             %% a new process has a new context so the span created
+    %             %% by the following `with_span` will have no parent
+    %             Link = opentelemetry:link(Parent),
+    %             ?with_span(
+    %                 <<"folio_fetcher_account_transactions">>,
+    %                 #{links => [Link]},
+    %                 fun(_Ctx) ->
+    %                     Transactions = folio_integration:fetch_integration_account_transactions(
+    %                         Integration, Acc
+    %                     ),
+    %                     ?LOG_INFO(#{
+    %                         message => account_transactions,
+    %                         account => Acc,
+    %                         transactions => Transactions
+    %                     })
+    %                 end
+    %             )
+    %         end)
+    %     end,
+    %     Accounts
+    % ),
 
     {noreply, State}.
 
@@ -195,4 +199,5 @@ write_accounts(#{id := IntegrationID}, Accounts) ->
         end,
         Accounts
     ),
+    fdb:close(C),
     ok.

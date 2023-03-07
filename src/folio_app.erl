@@ -95,7 +95,7 @@ trails_handlers() ->
         fun(ModString) -> lists:prefix("folio_handler_", ModString) end, ModStrings
     ),
     ModAtoms = lists:map(fun erlang:list_to_atom/1, FolioModStrings),
-    ModAtoms.
+    ModAtoms ++ [cowboy_swagger_handler].
 
 setup_trails() ->
     Handlers = trails_handlers(),

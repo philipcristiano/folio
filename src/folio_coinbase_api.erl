@@ -114,6 +114,14 @@ cb_to_tx(#{
         type => deposit
     };
 cb_to_tx(#{
+    <<"type">> := <<"exchange_withdrawal">>, <<"created_at">> := CreatedAt, <<"id">> := SourceID
+}) ->
+    #{
+        datetime => CreatedAt,
+        source_id => SourceID,
+        type => withdraw
+    };
+cb_to_tx(#{
     <<"type">> := <<"fiat_deposit">>,
     <<"created_at">> := CreatedAt,
     <<"id">> := SourceID

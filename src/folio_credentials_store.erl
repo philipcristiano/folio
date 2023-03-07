@@ -10,6 +10,7 @@ get_credentials(ID) ->
     {ok, [#{credentials := CredJson}]} = fdb:select(C, integration_credentials, #{
         integration_id => ID
     }),
+    fdb:close(C),
     Creds = jsx:decode(CredJson, [return_maps]),
     map_keys_to_atoms(Creds).
 
@@ -18,6 +19,7 @@ set_credentials(ID, Creds) ->
     CredJson = jsx:encode(Creds),
     {ok, C} = fdb:connect(),
     {ok, _} = fdb:write(C, integration_credentials, #{integration_id => ID, credentials => CredJson}),
+    fdb:close(C),
     ok.
 
 map_keys_to_atoms(M) ->

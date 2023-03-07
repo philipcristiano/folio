@@ -14,7 +14,8 @@
 -export_type([account/0]).
 -type account() :: #{
     id := binary(),
-    symbol := binary()
+    symbol := binary(),
+    balance := number()
 }.
 
 -export_type([id/0]).
@@ -49,7 +50,13 @@ providers() ->
     [
         #{
             name => <<"coinbase">>,
+            type => exchange,
             mod => folio_coinbase_api
+        },
+        #{
+            name => <<"bitcoin">>,
+            type => chain,
+            mod => folio_blockstream
         }
     ].
 

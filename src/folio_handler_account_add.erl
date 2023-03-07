@@ -14,10 +14,10 @@ trails() ->
     ].
 
 trails_for_integrations() ->
-    Providers = folio_exchange_integration:providers(),
+    Providers = folio_integration:providers(),
     lists:map(
         fun(Provider = #{name := Name}) ->
-            Spec = props_to_schema(folio_exchange_integration:provider_setup_properties(Name)),
+            Spec = props_to_schema(folio_integration:provider_setup_properties(Name)),
             trails_for_integration_spec(Name, Provider, Spec)
         end,
         Providers
@@ -51,7 +51,7 @@ handle_req(
     _Body,
     State
 ) ->
-    Integrations = folio_exchange_integration:providers(),
+    Integrations = folio_integration:providers(),
     Names = lists:map(fun(#{name := N}) -> N end, Integrations),
     {Req, 200, #{integrations => Names}, State};
 handle_req(
@@ -62,7 +62,7 @@ handle_req(
 ) ->
     ?LOG_INFO(#{message => getAccountAdd, mode => Mod, name => Name}),
 
-    Props = folio_exchange_integration:provider_setup_properties(Name),
+    Props = folio_integration:provider_setup_properties(Name),
 
     {Req, 200, #{setup_properties => props_to_form_input(Props)}, State};
 handle_req(
@@ -80,7 +80,7 @@ handle_req(
     Body,
     State = #{mod := _Mod, name := Name}
 ) ->
-    ok = folio_exchange_integration:add_integration(Name, Body),
+    ok = folio_integration:add_integration(Name, Body),
     {Req, 200, #{}, State};
 handle_req(
     Req = #{method := <<"POST">>},

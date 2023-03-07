@@ -2,11 +2,11 @@
 
   import { onMount } from 'svelte';
 
-  export let accounts = [];
   let message = "";
   let address = "";
   let integration_names = [];
   let integration_setups = [];
+  let integrations = [];
 
   async function getIntegrationNames() {
     let response = await fetch("/accounts/add", {
@@ -50,13 +50,13 @@
           message = json.message;
       };
   }
-  async function getAccounts() {
+  async function getIntegrations() {
     let response = await fetch("/accounts", {
         method: "GET",
     });
     let json = await response.json()
     if (response.ok) {
-        accounts = json.accounts;
+        integrations = json.integrations;
     } else {
         message = json.message;
     };
@@ -64,7 +64,7 @@
 
   onMount(() => {
       getIntegrationNames();
-      getAccounts();
+      getIntegrations();
   });
   async function addAddress(e) {
       const data = {};
@@ -107,12 +107,12 @@
     </div>
     {/each}
 
-    {#each accounts as account (account.id)}
+    {#each integrations as integration (integration.id)}
     <div>
-        ID: { account.id }
-        Provider: { account.provider_name }
-        Symbol: { account.symbol }
-        Balance: { account.balance }
+        ID: { integration.id }
+        Provider: { integration.provider_name }
+        Symbol: { integration.symbol }
+        Balance: { integration.balance }
     </div>
     {/each}
 

@@ -63,7 +63,7 @@ init([]) ->
 
 sync() ->
     {ok, C} = fdb:connect(),
-    {ok, Integrations} = folio_exchange_integration:integrations(C),
+    {ok, Integrations} = folio_integration:integrations(C),
 
     lists:foreach(
         fun(Int = #{id := _ID, provider_name := _PN}) ->
@@ -102,7 +102,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({sync, Integration = #{id := _ID, provider_name := _PN}}, State) ->
-    {ok, Accounts} = folio_exchange_integration:integration_accounts(Integration),
+    {ok, Accounts} = folio_integration:fetch_integration_accounts(Integration),
     ok = write_accounts(Integration, Accounts),
     Parent = ?current_span_ctx,
 
@@ -116,7 +116,7 @@ handle_cast({sync, Integration = #{id := _ID, provider_name := _PN}}, State) ->
                     <<"folio_fetcher_account_transactions">>,
                     #{links => [Link]},
                     fun(_Ctx) ->
-                        Transactions = folio_exchange_integration:integration_account_transactions(
+                        Transactions = folio_integration:fetch_integration_account_transactions(
                             Integration, Acc
                         ),
                         ?LOG_INFO(#{

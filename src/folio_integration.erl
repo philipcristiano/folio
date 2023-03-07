@@ -1,10 +1,10 @@
--module(folio_exchange_integration).
+-module(folio_integration).
 
 -include_lib("kernel/include/logger.hrl").
 -include_lib("opentelemetry_api/include/otel_tracer.hrl").
 
 -export([providers/0, provider_by_name/1, provider_setup_properties/1, add_integration/2]).
--export([integration_accounts/1, integration_account_transactions/2]).
+-export([fetch_integration_accounts/1, fetch_integration_account_transactions/2]).
 
 -export([integrations/0, integrations/1]).
 
@@ -83,8 +83,8 @@ add_integration(Name, AccountProperties) ->
             false
     end.
 
--spec integration_accounts(integration()) -> any().
-integration_accounts(Integration = #{provider_name := PN}) ->
+-spec fetch_integration_accounts(integration()) -> any().
+fetch_integration_accounts(Integration = #{provider_name := PN}) ->
     #{mod := Mod} = provider_by_name(PN),
     InitState = Mod:accounts_init(Integration),
     {ok, collect_accounts([], Mod, InitState)}.
@@ -116,8 +116,8 @@ collect_accounts(List, Mod, State) ->
             NewList
     end.
 
--spec integration_account_transactions(integration(), account()) -> {ok, list()}.
-integration_account_transactions(Integration = #{provider_name := PN}, Account) ->
+-spec fetch_integration_account_transactions(integration(), account()) -> {ok, list()}.
+fetch_integration_account_transactions(Integration = #{provider_name := PN}, Account) ->
     #{mod := Mod} = provider_by_name(PN),
     InitState = Mod:account_transactions_init(Integration, Account),
     {ok, collect_account_transactions([], Mod, InitState)}.

@@ -40,11 +40,9 @@ handle_req(
     ?LOG_INFO(#{message => getAccounts}),
 
     {ok, C} = fdb:connect(),
-    {ok, Accounts} = folio_exchange_integration:integrations(C),
-    %{ok, ExchangeAccounts} = folio_accounts:account_balances(C),
-    %{ok, ChainAccounts} = folio_chain_accounts:account_balances(C),
+    {ok, Integrations} = folio_integration:integrations(C),
 
-    {Req, 200, #{accounts => Accounts}, State};
+    {Req, 200, #{integrations => Integrations}, State};
 handle_req(
     Req = #{method := <<"POST">>},
     _Params,

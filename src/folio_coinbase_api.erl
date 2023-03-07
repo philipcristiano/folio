@@ -2,7 +2,7 @@
 
 -include_lib("kernel/include/logger.hrl").
 
--behavior(folio_exchange_integration).
+-behavior(folio_integration).
 
 -export([folio_init/0]).
 -export([setup_properties/0, add/2]).

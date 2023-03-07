@@ -109,8 +109,10 @@
 
     {#each accounts as account (account.id)}
     <div>
-        { account.symbol }
-        { account.balance }
+        ID: { account.id }
+        Name: { account.name }
+        Symbol: { account.symbol }
+        Balance: { account.balance }
     </div>
     {/each}
 

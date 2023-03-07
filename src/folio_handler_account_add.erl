@@ -77,6 +77,14 @@ handle_req(
 handle_req(
     Req = #{method := <<"POST">>},
     _Params,
+    Body,
+    State = #{mod := _Mod, name := Name}
+) ->
+    ok = folio_exchange_integration:add_integration(Name, Body),
+    {Req, 200, #{}, State};
+handle_req(
+    Req = #{method := <<"POST">>},
+    _Params,
     _Body = #{
         address := Address
     },

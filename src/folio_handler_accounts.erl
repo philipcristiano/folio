@@ -39,12 +39,10 @@ handle_req(
 ) ->
     ?LOG_INFO(#{message => getAccounts}),
 
-    %{ok, Accounts} = folio_exchange_integration:integration_accounts(folio_coinbase_api),
-    %ok = write_coinbase_accounts(Accounts),
-    %{ok, C} = fdb:connect(),
+    {ok, C} = fdb:connect(),
+    {ok, Accounts} = folio_exchange_integration:accounts(C),
     %{ok, ExchangeAccounts} = folio_accounts:account_balances(C),
     %{ok, ChainAccounts} = folio_chain_accounts:account_balances(C),
-    Accounts = [],
 
     {Req, 200, #{accounts => Accounts}, State};
 handle_req(

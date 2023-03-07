@@ -5,10 +5,9 @@
 -behavior(folio_exchange_integration).
 
 -export([folio_init/0]).
--export([setup_properties/0]).
+-export([setup_properties/0, add/2]).
 -export([accounts_init/0, accounts/1]).
 -export([account_transactions_init/1, account_transactions/1]).
--export([user/0]).
 
 folio_init() ->
     ok = throttle:setup(?MODULE, 10, per_second),
@@ -20,8 +19,15 @@ setup_properties() ->
         secret => #{}
     }.
 
-user() ->
-    case request(<<"/v2/user">>) of
+add(IntegrationID, #{key := K, secret := S}) ->
+    Credentials = #{key => K, secret => S},
+    State = #{integration_id => IntegrationID},
+    ok = folio_credentials_store:set_credentials(IntegrationID, Credentials),
+    {ok, _, _State} = user(State),
+    ok.
+
+user(State) ->
+    case request(<<"/v2/user">>, State) of
         {ok, Resp} ->
             User = maps:get(<<"data">>, Resp),
             {ok, User};
@@ -33,7 +39,7 @@ accounts_init() ->
     #{next_uri => <<"/v2/accounts?limit=100">>}.
 
 accounts(State = #{next_uri := NextURI}) ->
-    {ok, AccountResp} = request(NextURI),
+    {ok, AccountResp} = request(NextURI, State),
 
     Accounts = maps:get(<<"data">>, AccountResp),
 
@@ -59,7 +65,7 @@ account_transactions_init(#{id := AccountID}) ->
     State.
 
 account_transactions(State = #{next_uri := NextURI}) ->
-    {ok, Resp} = request(NextURI),
+    {ok, Resp} = request(NextURI, State),
     Data = maps:get(<<"data">>, Resp),
 
     Pagination = maps:get(<<"pagination">>, Resp, #{}),
@@ -141,44 +147,44 @@ cb_to_tx(#{<<"type">> := <<"send">>, <<"created_at">> := CreatedAt, <<"id">> := 
 transaction_path(AccountId) ->
     <<<<"/v2/accounts/">>/binary, AccountId/binary, <<"/transactions">>/binary>>.
 
-coinbase_credentials() ->
-    #{key := Key, secret := Secret} = folio_credentials_store:get_credentials(coinbase),
+coinbase_credentials(_State = #{integration_id := ID}) ->
+    #{key := Key, secret := Secret} = folio_credentials_store:get_credentials(ID),
     {Key, Secret}.
 
--spec request(binary()) -> {ok, map()} | {error, binary()}.
-request(PathQS) ->
-    request(PathQS, #{attempts_remaining => 3}).
+-spec request(binary(), any()) -> {ok, map(), any()} | {error, binary(), any()}.
+request(PathQS, State) ->
+    request(PathQS, #{attempts_remaining => 3}, State).
 
--spec request(binary(), map()) -> {ok, map()} | {error, binary()}.
-request(PathQS, #{attempts_remaining := AR}) when AR =< 0 ->
+-spec request(binary(), map(), any()) -> {ok, map(), any()} | {error, binary(), any()}.
+request(PathQS, #{attempts_remaining := AR}, State) when AR =< 0 ->
     ?LOG_INFO(#{
         message => "Coinbase request failed",
         path => PathQS
     }),
-    {error, "No more attemps remaining"};
-request(PathQS, Opts = #{attempts_remaining := AR}) ->
+    {error, "No more attemps remaining", State};
+request(PathQS, Opts = #{attempts_remaining := AR}, State) ->
     BasePath = <<"https://api.coinbase.com">>,
     Url = <<BasePath/binary, PathQS/binary>>,
 
     rate_limit(),
     % coinbase_sign requires a timestamp so rate limiting before it can cause
     % signing errors if the request is delayed too long
-    Headers = coinbase_sign(get, PathQS),
+    Headers = coinbase_sign(get, PathQS, State),
 
     case hackney:request(get, Url, Headers, [], [with_body]) of
         {error, timeout} ->
-            request(PathQS, Opts#{attempts_remaining => AR - 1});
+            request(PathQS, Opts#{attempts_remaining => AR - 1}, State);
         {ok, _RespCode, _RespHeaders, Body} ->
             case jsx:is_json(Body) of
-                true -> {ok, jsx:decode(Body, [return_maps])};
-                false -> {error, Body}
+                true -> {ok, jsx:decode(Body, [return_maps]), State};
+                false -> {error, Body, State}
             end
     end.
 
-coinbase_sign(get, Path) ->
+coinbase_sign(get, Path, State) ->
     Now = os:system_time(second),
 
-    {Key, Secret} = coinbase_credentials(),
+    {Key, Secret} = coinbase_credentials(State),
 
     NowBin = erlang:integer_to_binary(Now),
 

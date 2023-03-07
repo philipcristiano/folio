@@ -3,8 +3,10 @@
 -include_lib("kernel/include/logger.hrl").
 -include_lib("opentelemetry_api/include/otel_tracer.hrl").
 
--export([integrations/0, integration_by_name/1, integration_setup_properties/1]).
+-export([integrations/0, integration_by_name/1, integration_setup_properties/1, add_integration/2]).
 -export([integration_accounts/1, integration_account_transactions/2]).
+
+-export([accounts/0, accounts/1]).
 
 -export_type([state/0]).
 -type state() :: any().
@@ -14,6 +16,9 @@
     id := binary(),
     symbol := binary()
 }.
+
+-export_type([id/0]).
+-type id() :: binary().
 
 -type account_transactions() :: #{}.
 
@@ -26,6 +31,7 @@
 %%%
 
 -callback accounts_init() -> state().
+-callback add(id(), map()) -> {ok, any()}.
 -callback accounts(state()) -> {completeness(), list(account()), state()}.
 -callback setup_properties() -> map().
 -callback account_transactions_init(account()) -> state().
@@ -58,9 +64,29 @@ integration_setup_properties(Name) ->
             false
     end.
 
+-spec add_integration(binary(), map()) -> ok.
+add_integration(Name, AccountProperties) ->
+    case integration_by_name(Name) of
+        _Int = #{mod := Mod} ->
+            IntegrationID = new_id(),
+            {ok, C} = fdb:connect(),
+            {ok, _} = fdb:write(C, integrations, #{id => IntegrationID, name => Name}),
+            ok = Mod:add(IntegrationID, AccountProperties),
+            ok;
+        false ->
+            false
+    end.
+
 integration_accounts(Mod) ->
     InitState = Mod:accounts_init(),
     {ok, collect_accounts([], Mod, InitState)}.
+
+accounts() ->
+    {ok, C} = fdb:connect(),
+    accounts(C).
+accounts(C) ->
+    {ok, A} = fdb:select(C, integrations, #{}),
+    {ok, A}.
 
 collect_accounts(List, Mod, State) ->
     Resp = ?with_span(
@@ -102,3 +128,6 @@ collect_account_transactions(List, Mod, State) ->
             NewList = List ++ NewAccounts,
             NewList
     end.
+
+new_id() ->
+    uuid:to_string(uuid:uuid4()).

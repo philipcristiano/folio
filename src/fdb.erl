@@ -27,7 +27,7 @@ schema() ->
             name => "integrations",
             columns => [
                 #{name => "id", type => "uuid"},
-                #{name => "name", type => "text"}
+                #{name => "provider_name", type => "text"}
             ],
             primary_key => ["id"]
         },
@@ -42,7 +42,7 @@ schema() ->
         },
         #{
             type => table,
-            name => "accounts",
+            name => "integration_accounts",
             columns => [
                 #{name => "external_id", type => "text"},
                 #{name => "integration_id", type => "uuid"}
@@ -51,7 +51,7 @@ schema() ->
         },
         #{
             type => table,
-            name => "account_balances",
+            name => "integration_account_balances",
             columns => [
                 #{name => "integration_id", type => "uuid"},
                 #{name => "external_id", type => "text"},

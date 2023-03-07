@@ -40,7 +40,7 @@ handle_req(
     ?LOG_INFO(#{message => getAccounts}),
 
     {ok, C} = fdb:connect(),
-    {ok, Accounts} = folio_exchange_integration:accounts(C),
+    {ok, Accounts} = folio_exchange_integration:integrations(C),
     %{ok, ExchangeAccounts} = folio_accounts:account_balances(C),
     %{ok, ChainAccounts} = folio_chain_accounts:account_balances(C),
 

@@ -62,7 +62,16 @@ init([]) ->
     {ok, #state{}}.
 
 sync() ->
-    gen_server:cast(?MODULE, sync).
+    {ok, C} = fdb:connect(),
+    {ok, Integrations} = folio_exchange_integration:integrations(C),
+
+    lists:foreach(
+        fun(Int = #{id := _ID, provider_name := _PN}) ->
+            gen_server:cast(?MODULE, {sync, Int})
+        end,
+        Integrations
+    ),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -92,9 +101,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(sync, State) ->
-    {ok, Accounts} = folio_exchange_integration:integration_accounts(folio_coinbase_api),
-    ok = write_coinbase_accounts(Accounts),
+handle_cast({sync, Integration = #{id := _ID, provider_name := _PN}}, State) ->
+    {ok, Accounts} = folio_exchange_integration:integration_accounts(Integration),
+    ok = write_accounts(Integration, Accounts),
     Parent = ?current_span_ctx,
 
     lists:foreach(
@@ -104,11 +113,11 @@ handle_cast(sync, State) ->
                 %% by the following `with_span` will have no parent
                 Link = opentelemetry:link(Parent),
                 ?with_span(
-                    <<"coinbase_fetch">>,
+                    <<"folio_fetcher_account_transactions">>,
                     #{links => [Link]},
                     fun(_Ctx) ->
                         Transactions = folio_exchange_integration:integration_account_transactions(
-                            folio_coinbase_api, Acc
+                            Integration, Acc
                         ),
                         ?LOG_INFO(#{
                             message => account_transactions,
@@ -122,10 +131,6 @@ handle_cast(sync, State) ->
         Accounts
     ),
 
-    {noreply, State};
-handle_cast(_Msg, State) ->
-    {ok, Accounts} = folio_exchange_integration:integration_accounts(folio_coinbase_api),
-    ok = write_coinbase_accounts(Accounts),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -169,19 +174,24 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-write_coinbase_accounts(Accounts) ->
+write_accounts(#{id := IntegrationID}, Accounts) ->
     {ok, C} = fdb:connect(),
     lists:foreach(
         fun(#{id := ID, balance := B, symbol := S}) ->
-            AData = #{id => ID, symbol => S},
-            BalData = #{account_id => ID, balance => B},
+            AData = #{external_id => ID, integration_id => IntegrationID},
+            BalData = #{
+                integration_id => IntegrationID,
+                external_id => ID,
+                symbol => S,
+                balance => B
+            },
             ?LOG_INFO(#{
                 message => write_cb_account,
                 account_data => AData,
                 balance_data => BalData
             }),
-            {ok, _} = fdb:write(C, coinbase_accounts, AData),
-            {ok, _} = fdb:write(C, coinbase_account_balances, BalData)
+            {ok, _} = fdb:write(C, integration_accounts, AData),
+            {ok, _} = fdb:write(C, integration_account_balances, BalData)
         end,
         Accounts
     ),

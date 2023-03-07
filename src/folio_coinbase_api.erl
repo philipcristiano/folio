@@ -6,8 +6,8 @@
 
 -export([folio_init/0]).
 -export([setup_properties/0, add/2]).
--export([accounts_init/0, accounts/1]).
--export([account_transactions_init/1, account_transactions/1]).
+-export([accounts_init/1, accounts/1]).
+-export([account_transactions_init/2, account_transactions/1]).
 
 folio_init() ->
     ok = throttle:setup(?MODULE, 10, per_second),
@@ -28,18 +28,21 @@ add(IntegrationID, #{key := K, secret := S}) ->
 
 user(State) ->
     case request(<<"/v2/user">>, State) of
-        {ok, Resp} ->
+        {ok, Resp, State1} ->
             User = maps:get(<<"data">>, Resp),
-            {ok, User};
+            {ok, User, State1};
         Else ->
             Else
     end.
 
-accounts_init() ->
-    #{next_uri => <<"/v2/accounts?limit=100">>}.
+accounts_init(_Integration = #{id := IntegrationID}) ->
+    #{
+        next_uri => <<"/v2/accounts?limit=100">>,
+        integration_id => IntegrationID
+    }.
 
 accounts(State = #{next_uri := NextURI}) ->
-    {ok, AccountResp} = request(NextURI, State),
+    {ok, AccountResp, State1} = request(NextURI, State),
 
     Accounts = maps:get(<<"data">>, AccountResp),
 
@@ -53,19 +56,20 @@ accounts(State = #{next_uri := NextURI}) ->
             _ -> incomplete
         end,
 
-    NewState = State#{next_uri => NextNextURI},
+    State2 = State1#{next_uri => NextNextURI},
     FAccounts = lists:map(fun cb_to_account/1, Accounts),
-    {Complete, FAccounts, NewState}.
+    {Complete, FAccounts, State2}.
 
-account_transactions_init(#{id := AccountID}) ->
+account_transactions_init(#{id := IntegrationID}, #{id := AccountID}) ->
     State = #{
         account_id => AccountID,
+        integration_id => IntegrationID,
         next_uri => transaction_path(AccountID)
     },
     State.
 
 account_transactions(State = #{next_uri := NextURI}) ->
-    {ok, Resp} = request(NextURI, State),
+    {ok, Resp, State1} = request(NextURI, State),
     Data = maps:get(<<"data">>, Resp),
 
     Pagination = maps:get(<<"pagination">>, Resp, #{}),
@@ -78,8 +82,8 @@ account_transactions(State = #{next_uri := NextURI}) ->
             _ -> incomplete
         end,
     FolioTXs = lists:map(fun cb_to_tx/1, Data),
-    NewState = State#{next_uri => NextNextURI},
-    {Complete, FolioTXs, NewState}.
+    State2 = State1#{next_uri => NextNextURI},
+    {Complete, FolioTXs, State2}.
 
 cb_to_account(#{
     <<"id">> := SourceID,

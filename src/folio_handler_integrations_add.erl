@@ -1,10 +1,10 @@
--module(folio_handler_account_add).
+-module(folio_handler_integrations_add).
 
 -include_lib("kernel/include/logger.hrl").
 
 -export([init/2, trails/0, handle_req/4, post_req/2]).
 
--define(LIST_PATH, <<"/accounts/add">>).
+-define(LIST_PATH, <<"/integrations/add">>).
 
 trails() ->
     Metadata = folio_http:make_get(listAddAbleAccounts, #{}),

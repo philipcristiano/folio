@@ -1,4 +1,4 @@
--module(folio_handler_accounts).
+-module(folio_handler_integrations).
 
 -include_lib("kernel/include/logger.hrl").
 
@@ -10,7 +10,7 @@ trails() ->
     Metadata = maps:merge(GetMetadata, PostMetadata),
     State = #{},
     [
-        trails:trail(<<"/accounts">>, ?MODULE, State, Metadata)
+        trails:trail(<<"/integrations">>, ?MODULE, State, Metadata)
     ].
 
 return_schema() ->

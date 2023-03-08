@@ -7,6 +7,7 @@
 -export([fetch_integration_accounts/1, fetch_integration_account_transactions/2]).
 
 -export([integrations/0, integrations/1]).
+-export([integration_accounts/2]).
 
 -export_type([state/0]).
 -type state() :: any().
@@ -103,6 +104,15 @@ integrations() ->
 -spec integrations(epgsql:connection()) -> {ok, [integration()]}.
 integrations(C) ->
     {ok, A} = fdb:select(C, integrations, #{}),
+    {ok, A}.
+
+-spec integration_accounts(epgsql:connection(), id()) -> {ok, [account()]}.
+integration_accounts(C, IntegrationID) ->
+    Query =
+        "SELECT iab.integration_id as integration_id, iab.symbol as symbol, iab.balance as balance, iab.external_id as external_id FROM integration_account_balances As iab WHERE iab.integration_id = $1 AND iab.balance > 0;",
+    io:format("Query ~p~n", [{Query, IntegrationID}]),
+    {ok, A} = fdb:select(C, Query, [IntegrationID]),
+    %{ok, A} = fdb:select(C, integration_accounts, #{integration_id => IntegrationID}),
     {ok, A}.
 
 collect_accounts(List, Mod, State) ->

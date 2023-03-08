@@ -9,19 +9,19 @@
   let integrations = [];
 
   async function getIntegrationNames() {
-    let response = await fetch("/accounts/add", {
+    let response = await fetch("/integrations/add", {
         method: "GET",
     });
     let json = await response.json()
     if (response.ok) {
+        json.integrations.forEach(e => getIntegrationSetup(e));
         integration_names = json.integrations;
-        integration_names.forEach(e => getIntegrationSetup(e));
     } else {
         message = json.message;
     };
   }
   async function getIntegrationSetup(Name) {
-    let response = await fetch("/accounts/add/" + Name, {
+    let response = await fetch("/integrations/add/" + Name, {
         method: "GET",
     });
     let json = await response.json()
@@ -36,7 +36,7 @@
   }
   async function setupIntegration(integration) {
 
-      let response = await fetch("/accounts/add/" + integration.name, {
+      let response = await fetch("/integrations/add/" + integration.name, {
           method: "POST",
           headers: {
               'Content-Type': 'application/json'
@@ -51,12 +51,27 @@
       };
   }
   async function getIntegrations() {
-    let response = await fetch("/accounts", {
+    let response = await fetch("/integrations", {
         method: "GET",
     });
     let json = await response.json()
     if (response.ok) {
+        json.integrations.forEach(i =>
+            getIntegrationAccounts(i));
         integrations = json.integrations;
+    } else {
+        message = json.message;
+    };
+  }
+  async function getIntegrationAccounts(integration) {
+    integration['accounts'] = [];
+    let response = await fetch("/integrations/" + integration.id + "/accounts", {
+        method: "GET",
+    });
+    let json = await response.json()
+    if (response.ok) {
+        integration['accounts'] = json.accounts;
+        integrations = integrations;
     } else {
         message = json.message;
     };
@@ -97,8 +112,11 @@
     <div>
         ID: { integration.id }
         Provider: { integration.provider_name }
-        Symbol: { integration.symbol }
-        Balance: { integration.balance }
+
+        {#each integration.accounts as integration_account (integration_account.external_id)}
+        Symbol: { integration_account.symbol }
+        Balance: { integration_account.balance }
+        {/each}
     </div>
     {/each}
 

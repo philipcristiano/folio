@@ -78,15 +78,16 @@ provider_setup_properties(Name) ->
             false
     end.
 
--spec add_integration(binary(), map()) -> ok.
+-spec add_integration(binary(), map()) -> {ok, integration()} | false.
 add_integration(Name, AccountProperties) ->
     case provider_by_name(Name) of
         _Int = #{mod := Mod} ->
             IntegrationID = new_id(),
             {ok, C} = fdb:connect(),
-            {ok, _} = fdb:write(C, integrations, #{id => IntegrationID, provider_name => Name}),
+            Integration = #{id => IntegrationID, provider_name => Name},
+            {ok, _} = fdb:write(C, integrations, Integration),
             ok = Mod:add(IntegrationID, AccountProperties),
-            ok;
+            {ok, Integration};
         false ->
             false
     end.

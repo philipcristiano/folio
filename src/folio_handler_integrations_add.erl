@@ -80,8 +80,13 @@ handle_req(
     Body,
     State = #{mod := _Mod, name := Name}
 ) ->
-    ok = folio_integration:add_integration(Name, Body),
-    {Req, 200, #{}, State};
+    case folio_integration:add_integration(Name, Body) of
+        {ok, Int} ->
+            folio_fetcher:sync(Int),
+            {Req, 200, #{}, State};
+        false ->
+            {Req, 500, #{}, State}
+    end;
 handle_req(
     Req = #{method := <<"POST">>},
     _Params,

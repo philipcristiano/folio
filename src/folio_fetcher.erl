@@ -26,7 +26,7 @@
     code_change/3
 ]).
 
--export([sync/0]).
+-export([sync/0, sync/1]).
 -record(state, {}).
 
 %%%===================================================================
@@ -65,12 +65,12 @@ sync() ->
     {ok, C} = fdb:connect(),
     {ok, Integrations} = folio_integration:integrations(C),
 
-    lists:foreach(
-        fun(Int = #{id := _ID, provider_name := _PN}) ->
-            gen_server:cast(?MODULE, {sync, Int})
-        end,
-        Integrations
-    ),
+    lists:foreach(fun sync/1, Integrations),
+    ok.
+
+-spec sync(folio_integration:integration()) -> ok.
+sync(Int = #{id := _ID, provider_name := _PN}) ->
+    gen_server:cast(?MODULE, {sync, Int}),
     ok.
 
 %%--------------------------------------------------------------------
@@ -103,39 +103,51 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({sync, Integration = #{id := _ID, provider_name := _PN}}, State) ->
     ?LOG_INFO(#{
-        message => "Starting sync",
+        message => "Starting sync spawn",
         integration => Integration
     }),
-    {ok, Accounts} = folio_integration:fetch_integration_accounts(Integration),
-    ok = write_accounts(Integration, Accounts),
-    % Parent = ?current_span_ctx,
+    ctx_spawn(<<"fetch_integration_accounts">>, fun() ->
+        ?LOG_INFO(#{
+            message => "Starting sync",
+            integration => Integration
+        }),
+        {ok, Accounts} = folio_integration:fetch_integration_accounts(Integration),
+        ok = write_accounts(Integration, Accounts),
 
-    % lists:foreach(
-    %     fun(Acc) ->
-    %         proc_lib:spawn(fun() ->
-    %             %% a new process has a new context so the span created
-    %             %% by the following `with_span` will have no parent
-    %             Link = opentelemetry:link(Parent),
-    %             ?with_span(
-    %                 <<"folio_fetcher_account_transactions">>,
-    %                 #{links => [Link]},
-    %                 fun(_Ctx) ->
-    %                     Transactions = folio_integration:fetch_integration_account_transactions(
-    %                         Integration, Acc
-    %                     ),
-    %                     ?LOG_INFO(#{
-    %                         message => account_transactions,
-    %                         account => Acc,
-    %                         transactions => Transactions
-    %                     })
-    %                 end
-    %             )
-    %         end)
-    %     end,
-    %     Accounts
-    % ),
+        lists:foreach(
+            fun(Acc) ->
+                ctx_spawn(<<"fetch_integration">>, fun() ->
+                    Transactions = folio_integration:fetch_integration_account_transactions(
+                        Integration, Acc
+                    ),
+                    ?LOG_INFO(#{
+                        message => account_transactions,
+                        account => Acc,
+                        transactions => Transactions
+                    })
+                end)
+            end,
+            Accounts
+        )
+    end),
 
     {noreply, State}.
+
+ctx_spawn(Name, Fun) ->
+    Parent = ?current_span_ctx,
+
+    proc_lib:spawn(fun() ->
+        %% a new process has a new context so the span created
+        %% by the following `with_span` will have no parent
+        Link = opentelemetry:link(Parent),
+        ?with_span(
+            Name,
+            #{links => [Link]},
+            fun(_Ctx) ->
+                Fun()
+            end
+        )
+    end).
 
 %%--------------------------------------------------------------------
 %% @private

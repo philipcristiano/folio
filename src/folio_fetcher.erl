@@ -117,10 +117,11 @@ handle_cast({sync, Integration = #{id := _ID, provider_name := _PN}}, State) ->
         lists:foreach(
             fun(Acc) ->
                 ctx_spawn(<<"fetch_integration">>, fun() ->
-                    Transactions = folio_integration:fetch_integration_account_transactions(
+                    {ok, Transactions} = folio_integration:fetch_integration_account_transactions(
                         Integration, Acc
                     ),
-                    ?LOG_INFO(#{
+                    ok = write_account_transactions(Integration, Acc, Transactions),
+                    ?LOG_DEBUG(#{
                         message => account_transactions,
                         account => Acc,
                         transactions => Transactions
@@ -193,23 +194,66 @@ code_change(_OldVsn, State, _Extra) ->
 write_accounts(#{id := IntegrationID}, Accounts) ->
     {ok, C} = fdb:connect(),
     lists:foreach(
-        fun(#{id := ID, balance := B, symbol := S}) ->
+        fun(#{id := ID, balances := Balances}) ->
             AData = #{external_id => ID, integration_id => IntegrationID},
-            BalData = #{
-                integration_id => IntegrationID,
-                external_id => ID,
-                symbol => S,
-                balance => B
-            },
-            ?LOG_INFO(#{
-                message => write_cb_account,
-                account_data => AData,
-                balance_data => BalData
-            }),
             {ok, _} = fdb:write(C, integration_accounts, AData),
-            {ok, _} = fdb:write(C, integration_account_balances, BalData)
+            lists:foreach(
+                fun(#{balance := Balance, symbol := Symbol}) ->
+                    BalData = #{
+                        integration_id => IntegrationID,
+                        external_id => ID,
+                        symbol => Symbol,
+                        balance => Balance
+                    },
+                    ?LOG_DEBUG(#{
+                        message => write_cb_account,
+                        account_data => AData,
+                        balance_data => BalData
+                    }),
+                    {ok, _} = fdb:write(C, integration_account_balances, BalData)
+                end,
+                Balances
+            )
         end,
         Accounts
+    ),
+    fdb:close(C),
+    ok.
+
+% TODO: Move fdb:write to folio_integration
+-spec write_account_transactions(
+    folio_integration:integration(),
+    folio_integration:account(),
+    folio_integration:account_transaction()
+) -> ok.
+write_account_transactions(#{id := IntegrationID}, _Account = #{id := AccountID}, Transactions) ->
+    {ok, C} = fdb:connect(),
+    lists:foreach(
+        fun(
+            _T = #{
+                source_id := SourceID,
+                datetime := DT,
+                direction := Direction,
+                symbol := Symbol,
+                amount := Amount,
+                type := Type,
+                description := Description
+            }
+        ) ->
+            DBT = #{
+                integration_id => IntegrationID,
+                external_id => AccountID,
+                source_id => SourceID,
+                timestamp => DT,
+                direction => Direction,
+                symbol => Symbol,
+                amount => Amount,
+                type => Type,
+                description => Description
+            },
+            {ok, _} = fdb:write(C, integration_account_transactions, DBT)
+        end,
+        Transactions
     ),
     fdb:close(C),
     ok.

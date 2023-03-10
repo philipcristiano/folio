@@ -47,6 +47,7 @@ schema() ->
             type => table,
             name => "integration_accounts",
             columns => [
+                % TODO: Rename external_account_id
                 #{name => "external_id", type => "text"},
                 #{name => "integration_id", type => "uuid"}
             ],
@@ -62,6 +63,22 @@ schema() ->
                 #{name => "balance", type => "numeric"}
             ],
             primary_key => ["integration_id", "external_id", "symbol"]
+        },
+        #{
+            type => table,
+            name => "integration_account_transactions",
+            columns => [
+                #{name => "integration_id", type => "uuid"},
+                #{name => "external_id", type => "text"},
+                #{name => "source_id", type => "text"},
+                #{name => "direction", type => "text"},
+                #{name => "timestamp", type => "timestamp"},
+                #{name => "symbol", type => "text"},
+                #{name => "amount", type => "numeric"},
+                #{name => "type", type => "text"},
+                #{name => "description", type => "text"}
+            ],
+            primary_key => ["integration_id", "external_id", "source_id"]
         }
     ].
 

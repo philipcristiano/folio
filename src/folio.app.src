@@ -17,6 +17,7 @@
         ssl,
         hackney,
         tls_certificate_check,
+        qdate,
         trails,
         opentelemetry_api,
         opentelemetry,

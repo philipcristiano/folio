@@ -10,7 +10,7 @@
 -export([account_transactions_init/2, account_transactions/1]).
 
 folio_init() ->
-    ok = throttle:setup(?MODULE, 10, per_second),
+    ok = throttle:setup(?MODULE, 5, per_second),
     ok.
 
 setup_properties() ->
@@ -81,7 +81,7 @@ account_transactions(State = #{next_uri := NextURI}) ->
             null -> complete;
             _ -> incomplete
         end,
-    FolioTXs = lists:map(fun cb_to_tx/1, Data),
+    FolioTXs = lists:flatten(lists:map(fun cb_to_tx/1, Data)),
     State2 = State1#{next_uri => NextNextURI},
     {Complete, FolioTXs, State2}.
 
@@ -93,68 +93,90 @@ cb_to_account(#{
     FBalance = list_to_float(LBalanace),
     #{
         id => SourceID,
-        balance => FBalance,
-        symbol => SourceSymbol
+        balances => [
+            #{
+                balance => FBalance,
+                symbol => SourceSymbol
+            }
+        ]
     }.
 
-cb_to_tx(#{<<"type">> := <<"buy">>, <<"created_at">> := CreatedAt, <<"id">> := SourceID}) ->
+-spec type_to_partial_transaction(binary()) -> map().
+type_to_partial_transaction(T = <<"buy">>) ->
     #{
-        datetime => CreatedAt,
-        source_id => SourceID,
-        type => buy
+        direction => in,
+        description => T
     };
-cb_to_tx(#{
-    <<"type">> := <<"exchange_deposit">>,
-    <<"created_at">> := CreatedAt,
-    <<"id">> := SourceID
-}) ->
+type_to_partial_transaction(T = <<"staking_reward">>) ->
     #{
-        datetime => CreatedAt,
-        source_id => SourceID,
-        type => deposit
+        direction => in,
+        description => T
     };
-cb_to_tx(#{
-    <<"type">> := <<"exchange_withdrawal">>, <<"created_at">> := CreatedAt, <<"id">> := SourceID
-}) ->
+type_to_partial_transaction(T = <<"send">>) ->
     #{
-        datetime => CreatedAt,
-        source_id => SourceID,
-        type => withdraw
+        direction => out,
+        description => T
     };
-cb_to_tx(#{
-    <<"type">> := <<"fiat_deposit">>,
-    <<"created_at">> := CreatedAt,
-    <<"id">> := SourceID
-}) ->
+type_to_partial_transaction(T = <<"fiat_deposit">>) ->
     #{
-        datetime => CreatedAt,
-        source_id => SourceID,
-        type => deposit
+        direction => in,
+        description => T
     };
-cb_to_tx(#{<<"type">> := <<"pro_deposit">>, <<"created_at">> := CreatedAt, <<"id">> := SourceID}) ->
+type_to_partial_transaction(T = <<"fiat_withdrawal">>) ->
     #{
-        datetime => CreatedAt,
-        source_id => SourceID,
-        type => deposit
+        direction => out,
+        description => T
     };
-cb_to_tx(#{<<"type">> := <<"pro_withdrawal">>, <<"created_at">> := CreatedAt, <<"id">> := SourceID}) ->
+type_to_partial_transaction(T = <<"exchange_deposit">>) ->
     #{
-        datetime => CreatedAt,
-        source_id => SourceID,
-        type => withdraw
+        direction => in,
+        description => T
     };
-cb_to_tx(#{<<"type">> := <<"fiat_withdrawal">>, <<"created_at">> := CreatedAt, <<"id">> := SourceID}) ->
+type_to_partial_transaction(T = <<"exchange_withdrawal">>) ->
     #{
-        datetime => CreatedAt,
-        source_id => SourceID,
-        type => withdraw
+        direction => out,
+        description => T
     };
-cb_to_tx(#{<<"type">> := <<"send">>, <<"created_at">> := CreatedAt, <<"id">> := SourceID}) ->
+type_to_partial_transaction(T = <<"inflation_reward">>) ->
     #{
-        datetime => CreatedAt,
-        source_id => SourceID,
-        type => send
+        direction => in,
+        description => T
+    };
+type_to_partial_transaction(T = <<"pro_deposit">>) ->
+    #{
+        direction => in,
+        description => T
+    };
+type_to_partial_transaction(T = <<"pro_withdrawal">>) ->
+    #{
+        direction => out,
+        description => T
     }.
+
+-spec cb_to_tx(map()) -> folio_integration:account_transactions().
+cb_to_tx(
+    CB = #{
+        <<"type">> := Type,
+        <<"created_at">> := CreatedAt,
+        <<"id">> := SourceID,
+        <<"amount">> := #{<<"amount">> := Amount, <<"currency">> := Symbol}
+    }
+) ->
+    Partial = type_to_partial_transaction(Type),
+    DT = qdate:to_date(CreatedAt),
+    ?LOG_INFO(#{
+        message => coinbase_transaction,
+        cb => CB
+    }),
+    [
+        maps:merge(Partial, #{
+            datetime => DT,
+            source_id => SourceID,
+            amount => Amount,
+            symbol => Symbol,
+            type => undefined
+        })
+    ].
 
 transaction_path(AccountId) ->
     <<<<"/v2/accounts/">>/binary, AccountId/binary, <<"/transactions">>/binary>>.

@@ -15,8 +15,12 @@
 -export_type([account/0]).
 -type account() :: #{
     id := binary(),
-    symbol := binary(),
-    balance := number()
+    balances := list(account_balance())
+}.
+
+-type account_balance() :: #{
+    balance := number(),
+    symbol := binary()
 }.
 
 -export_type([id/0]).
@@ -28,7 +32,19 @@
     provider_name := binary()
 }.
 
--type account_transactions() :: #{}.
+-export_type([account_transactions/0]).
+-type account_transactions() :: list(account_transaction).
+
+-export_type([account_transaction/0]).
+-type account_transaction() :: #{
+    source_id := binary(),
+    datetime := any(),
+    direction := in | out,
+    symbol := binary(),
+    amount := number(),
+    type := fee | undefined,
+    description := binary()
+}.
 
 -type completeness() :: incomplete | complete.
 
@@ -43,7 +59,7 @@
 -callback accounts(state()) -> {completeness(), list(account()), state()}.
 -callback setup_properties() -> map().
 -callback account_transactions_init(integration(), account()) -> state().
--callback account_transactions(state()) -> {completeness(), list(account_transactions()), state()}.
+-callback account_transactions(state()) -> {completeness(), account_transactions(), state()}.
 
 %%%
 
@@ -69,6 +85,7 @@ provider_by_name(Name) ->
         _ -> false
     end.
 
+-spec provider_setup_properties(binary()) -> map() | false.
 provider_setup_properties(Name) ->
     case provider_by_name(Name) of
         #{mod := Mod} ->

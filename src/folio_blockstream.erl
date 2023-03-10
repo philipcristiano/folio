@@ -43,13 +43,16 @@ accounts(State = #{address := Addr}) ->
     % Blockstream returns in sats, divide to get whole BTC.
     SatBalance = In - Out,
     BTCBalance = SatBalance / 100000000,
-    io:format("Balance ~p~n", [BTCBalance]),
 
     Accounts = [
         #{
             id => Addr,
-            balance => BTCBalance,
-            symbol => <<"BTC">>
+            balances => [
+                #{
+                    balance => BTCBalance,
+                    symbol => <<"BTC">>
+                }
+            ]
         }
     ],
     {complete, Accounts, State}.

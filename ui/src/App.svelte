@@ -1,17 +1,8 @@
 <script>
-    export let socket;
-
 	import { onMount } from 'svelte';
 	import Login from './Login.svelte';
-	import AccountList from './AccountList.svelte';
+	import IntegrationList from './IntegrationList.svelte';
 
-    export let items = [];
-    let list_fetched = false;
-    let user = false;
-    let coinbase_user = false;
-    let coinbase_accounts = [];
-    let coinbase_transactions = [];
-    let user_token;
 
 	onMount(() => {
 	});
@@ -20,7 +11,7 @@
 
 <main class="flex container xl ">
     <h1>Hello!</h1>
-    <AccountList />
+    <IntegrationList />
 
 </main>
 

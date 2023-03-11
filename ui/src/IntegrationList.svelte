@@ -2,6 +2,8 @@
 
   import { onMount } from 'svelte';
 
+  import Integration from './Integration.svelte';
+
   let message = "";
   let address = "";
   let integration_names = [];
@@ -126,14 +128,8 @@
     Current installed integrations:
     {#each integrations as integration (integration.id)}
     <div>
-        ID: { integration.id }
-        Provider: { integration.provider_name }
-
-        {#each integration.accounts as integration_account (integration_account.external_id)}
-        Symbol: { integration_account.symbol }
-        Balance: { integration_account.balance }
+        <Integration {...integration} />
         <button type="submit" on:click={() => syncIntegration(integration)}>Sync</button>
-        {/each}
     </div>
     {/each}
 

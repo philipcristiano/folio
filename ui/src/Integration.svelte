@@ -32,12 +32,13 @@
     {/if}
 
 <div class="justify-center" >
-        ID: { id }
         Provider: { provider_name }
 
         {#each accounts as integration_account (integration_account.external_id)}
+        <div class="max-w-md">
         Symbol: { integration_account.symbol }
         Balance: { integration_account.balance }
+        </div>
         {/each}
 
 </div>

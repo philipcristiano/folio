@@ -28,7 +28,6 @@ return_schema() ->
     }.
 
 init(Req, Opts) ->
-    io:format("Req ~p~n", [Req]),
     MatchReq = Req#{path => ?PATH},
     folio_http_session:init(Req),
     {specified_handler, MatchReq, Opts}.

@@ -80,28 +80,9 @@ handle_req(
     Body,
     State = #{mod := _Mod, name := Name}
 ) ->
-    case folio_integration:add_integration(Name, Body) of
-        false ->
-            {Req, 500, #{}, State};
-        {ok, Int} ->
-            folio_fetcher:sync(Int),
-            {Req, 200, #{}, State}
-    end;
-handle_req(
-    Req = #{method := <<"POST">>},
-    _Params,
-    _Body = #{
-        address := Address
-    },
-    State
-) ->
-    ok = folio_chain_accounts:add(#{
-        address => Address,
-        chain => <<"bitcoin">>,
-        type => <<"address">>
-    }),
-
-    {Req, 202, #{status => ok}, State}.
+    {ok, Int} = folio_integration:add_integration(Name, Body),
+    ok = folio_fetcher:sync(Int),
+    {Req, 200, #{}, State}.
 
 post_req(_Response, _State) ->
     ok.

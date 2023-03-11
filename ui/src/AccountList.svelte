@@ -63,6 +63,18 @@
         message = json.message;
     };
   }
+  async function syncIntegration(integration) {
+    integration['accounts'] = [];
+    let response = await fetch("/integrations/" + integration.id + "/sync", {
+        method: "POST",
+    });
+    let json = await response.json()
+    if (response.ok) {
+        message = "Starting integration sync" + integration.id;
+    } else {
+        message = json.message;
+    };
+  }
   async function getIntegrationAccounts(integration) {
     integration['accounts'] = [];
     let response = await fetch("/integrations/" + integration.id + "/accounts", {
@@ -84,26 +96,30 @@
 
 </script>
 
-<div class="columns-2">
+<div class="justify-center" >
     {#if message}
-    <h2> {message} </h2>
+        <div><h2> {message} </h2></div>
     {/if}
 
+    <div class="columns-1">
     Available integration providers:
     {#each integration_names as addableIntegrationName }
     <div>
         { addableIntegrationName }
     </div>
     {/each}
+    </div>
 
     Add a new integration:
     {#each integration_setups as addableIntegration }
-    <div>
-        Name: { addableIntegration.name }
+    <div class="columns-2">
+        <div> Name: { addableIntegration.name } </div>
+        <div>
             {#each addableIntegration.input_fields as field }
             <input bind:value={addableIntegration.inputs[field]} placeholder="{field}">
             {/each}
             <button type="submit" on:click={() => setupIntegration(addableIntegration)}>Add</button>
+        </div>
     </div>
     {/each}
 
@@ -116,6 +132,7 @@
         {#each integration.accounts as integration_account (integration_account.external_id)}
         Symbol: { integration_account.symbol }
         Balance: { integration_account.balance }
+        <button type="submit" on:click={() => syncIntegration(integration)}>Sync</button>
         {/each}
     </div>
     {/each}

@@ -121,7 +121,7 @@ handle_cast({sync, Integration = #{id := _ID, provider_name := _PN}}, State) ->
                         Integration, Acc
                     ),
                     ok = write_account_transactions(Integration, Acc, Transactions),
-                    ?LOG_DEBUG(#{
+                    ?LOG_INFO(#{
                         message => account_transactions,
                         account => Acc,
                         transactions => Transactions
@@ -224,7 +224,7 @@ write_accounts(#{id := IntegrationID}, Accounts) ->
 -spec write_account_transactions(
     folio_integration:integration(),
     folio_integration:account(),
-    folio_integration:account_transaction()
+    folio_integration:account_transactions()
 ) -> ok.
 write_account_transactions(#{id := IntegrationID}, _Account = #{id := AccountID}, Transactions) ->
     {ok, C} = fdb:connect(),

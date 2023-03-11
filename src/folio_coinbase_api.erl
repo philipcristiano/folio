@@ -153,7 +153,6 @@ type_to_partial_transaction(T = <<"pro_withdrawal">>) ->
         description => T
     }.
 
--spec cb_to_tx(map()) -> folio_integration:account_transactions().
 cb_to_tx(
     CB = #{
         <<"type">> := Type,
@@ -164,7 +163,7 @@ cb_to_tx(
 ) ->
     Partial = type_to_partial_transaction(Type),
     DT = qdate:to_date(CreatedAt),
-    ?LOG_INFO(#{
+    ?LOG_DEBUG(#{
         message => coinbase_transaction,
         cb => CB
     }),
@@ -172,11 +171,17 @@ cb_to_tx(
         maps:merge(Partial, #{
             datetime => DT,
             source_id => SourceID,
-            amount => Amount,
+            amount => binary_abs(Amount),
             symbol => Symbol,
             type => undefined
         })
     ].
+
+binary_abs(A = <<F:1/binary, Rest/binary>>) ->
+    case F of
+        <<"-">> -> Rest;
+        _ -> A
+    end.
 
 transaction_path(AccountId) ->
     <<<<"/v2/accounts/">>/binary, AccountId/binary, <<"/transactions">>/binary>>.

@@ -6,7 +6,7 @@
 -export([providers/0, provider_by_name/1, provider_setup_properties/1, add_integration/2]).
 -export([fetch_integration_accounts/1, fetch_integration_account_transactions/2]).
 
--export([integrations/0, integrations/1]).
+-export([integrations/0, integrations/1, integration_by_id/2]).
 -export([integration_accounts/2]).
 
 -export_type([state/0]).
@@ -38,12 +38,19 @@
 -export_type([account_transaction/0]).
 -type account_transaction() :: #{
     source_id := binary(),
-    datetime := any(),
+    datetime := calendar:datetime(),
     direction := in | out,
     symbol := binary(),
     amount := number(),
     type := fee | undefined,
     description := binary()
+}.
+
+-export_type([provider/0]).
+-type provider() :: #{
+    name := binary(),
+    type := exchange | chain,
+    mod := atom()
 }.
 
 -type completeness() :: incomplete | complete.
@@ -77,37 +84,32 @@ providers() ->
         }
     ].
 
--spec provider_by_name(binary()) -> false | map().
+-spec provider_by_name(binary()) -> provider().
 provider_by_name(Name) ->
     Ints = providers(),
     case lists:search(fun(#{name := N}) -> N == Name end, Ints) of
         {value, V} -> V;
-        _ -> false
+        _ -> throw(not_found)
     end.
 
--spec provider_setup_properties(binary()) -> map() | false.
+-spec provider_setup_properties(binary()) -> map().
 provider_setup_properties(Name) ->
-    case provider_by_name(Name) of
-        #{mod := Mod} ->
-            Props = Mod:setup_properties(),
-            Props;
-        false ->
-            false
-    end.
+    #{mod := Mod} = provider_by_name(Name),
+    Props = Mod:setup_properties(),
+    Props.
 
--spec add_integration(binary(), map()) -> {ok, integration()} | false.
+-spec add_integration(binary(), map()) -> {ok, integration()}.
 add_integration(Name, AccountProperties) ->
-    case provider_by_name(Name) of
-        _Int = #{mod := Mod} ->
-            IntegrationID = new_id(),
-            {ok, C} = fdb:connect(),
-            Integration = #{id => IntegrationID, provider_name => Name},
-            {ok, _} = fdb:write(C, integrations, Integration),
-            ok = Mod:add(IntegrationID, AccountProperties),
-            {ok, Integration};
-        false ->
-            false
-    end.
+    #{mod := Mod} = provider_by_name(Name),
+    IntegrationID = new_id(),
+    Integration = #{id => IntegrationID, provider_name => Name},
+
+    {ok, C} = fdb:connect(),
+    {ok, _} = fdb:write(C, integrations, Integration),
+    fdb:close(C),
+
+    ok = Mod:add(IntegrationID, AccountProperties),
+    {ok, Integration}.
 
 -spec fetch_integration_accounts(integration()) -> any().
 fetch_integration_accounts(Integration = #{provider_name := PN}) ->
@@ -124,11 +126,15 @@ integrations(C) ->
     {ok, A} = fdb:select(C, integrations, #{}),
     {ok, A}.
 
+-spec integration_by_id(epgsql:connection(), id()) -> {ok, integration()}.
+integration_by_id(C, ID) ->
+    {ok, [I]} = fdb:select(C, integrations, #{id => ID}),
+    {ok, I}.
+
 -spec integration_accounts(epgsql:connection(), id()) -> {ok, [account()]}.
 integration_accounts(C, IntegrationID) ->
     Query =
         "SELECT iab.integration_id as integration_id, iab.symbol as symbol, iab.balance as balance, iab.external_id as external_id FROM integration_account_balances As iab WHERE iab.integration_id = $1 AND iab.balance > 0;",
-    io:format("Query ~p~n", [{Query, IntegrationID}]),
     {ok, A} = fdb:select(C, Query, [IntegrationID]),
     %{ok, A} = fdb:select(C, integration_accounts, #{integration_id => IntegrationID}),
     {ok, A}.
@@ -176,4 +182,4 @@ collect_account_transactions(List, Mod, State) ->
     end.
 
 new_id() ->
-    uuid:to_string(uuid:uuid4()).
+    erlang:list_to_binary(uuid:to_string(uuid:uuid4())).

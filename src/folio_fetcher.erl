@@ -203,7 +203,7 @@ write_accounts(#{id := IntegrationID}, Accounts) ->
                         integration_id => IntegrationID,
                         external_id => ID,
                         symbol => Symbol,
-                        balance => Balance
+                        balance => decimal:to_binary(Balance)
                     },
                     ?LOG_DEBUG(#{
                         message => write_cb_account,
@@ -247,7 +247,7 @@ write_account_transactions(#{id := IntegrationID}, _Account = #{id := AccountID}
                 timestamp => DT,
                 direction => Direction,
                 symbol => Symbol,
-                amount => Amount,
+                amount => decimal:to_binary(Amount),
                 type => Type,
                 description => Description
             },

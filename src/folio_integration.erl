@@ -19,7 +19,7 @@
 }.
 
 -type account_balance() :: #{
-    balance := number(),
+    balance := decimal:decimal(),
     symbol := binary()
 }.
 
@@ -41,7 +41,7 @@
     datetime := calendar:datetime(),
     direction := in | out,
     symbol := binary(),
-    amount := number(),
+    amount := decimal:decimal(),
     type := fee | undefined,
     description := binary()
 }.

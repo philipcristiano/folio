@@ -87,15 +87,14 @@ account_transactions(State = #{next_uri := NextURI}) ->
 
 cb_to_account(#{
     <<"id">> := SourceID,
-    <<"balance">> := #{<<"amount">> := Balance, <<"currency">> := SourceSymbol}
+    <<"balance">> := #{<<"amount">> := BalanceF, <<"currency">> := SourceSymbol}
 }) ->
-    LBalanace = binary_to_list(Balance),
-    FBalance = list_to_float(LBalanace),
+    Balance = to_decimal(BalanceF),
     #{
         id => SourceID,
         balances => [
             #{
-                balance => FBalance,
+                balance => Balance,
                 symbol => SourceSymbol
             }
         ]
@@ -171,17 +170,11 @@ cb_to_tx(
         maps:merge(Partial, #{
             datetime => DT,
             source_id => SourceID,
-            amount => binary_abs(Amount),
+            amount => decimal:abs(to_decimal(Amount)),
             symbol => Symbol,
             type => undefined
         })
     ].
-
-binary_abs(A = <<F:1/binary, Rest/binary>>) ->
-    case F of
-        <<"-">> -> Rest;
-        _ -> A
-    end.
 
 transaction_path(AccountId) ->
     <<<<"/v2/accounts/">>/binary, AccountId/binary, <<"/transactions">>/binary>>.
@@ -262,3 +255,7 @@ time_to_reset(I) when I < 2 ->
     rand:uniform(30);
 time_to_reset(N) ->
     N.
+
+to_decimal(F) when is_binary(F) ->
+    L = size(F),
+    decimal:to_decimal(F, #{precision => L, rounding => round_floor}).

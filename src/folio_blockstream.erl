@@ -1,8 +1,11 @@
 -module(folio_blockstream).
 
 -include_lib("kernel/include/logger.hrl").
+-include_lib("decimal/include/decimal.hrl").
 -include_lib("opentelemetry_api/include/otel_tracer.hrl").
 -behavior(folio_integration).
+
+-define(DOPTS, #{precision => 10, rounding => round_floor}).
 
 -export([folio_init/0]).
 
@@ -32,27 +35,32 @@ accounts_init(_Integration = #{id := IntegrationID}) ->
         integration_id => IntegrationID
     }.
 
+-spec sats_to_btc(integer()) -> decimal:decimal().
 sats_to_btc(Sats) ->
-    Sats / 100000000.
+    SatD = decimal:to_decimal(Sats, #{precision => 10, rounding => round_floor}),
+    SatsPerBTC = decimal:to_decimal(100000000, ?DOPTS),
+    decimal:divide(SatD, SatsPerBTC, ?DOPTS).
 
 accounts(State = #{address := Addr}) ->
     {ok, #{
         <<"chain_stats">> := #{
-            <<"funded_txo_sum">> := In,
-            <<"spent_txo_sum">> := Out
+            <<"funded_txo_sum">> := InSats,
+            <<"spent_txo_sum">> := OutSats
         }
     }} = balance(Addr),
 
+    In = sats_to_btc(InSats),
+    Out = sats_to_btc(OutSats),
+
     % Blockstream returns in sats, divide to get whole BTC.
-    SatBalance = In - Out,
-    BTCBalance = sats_to_btc(SatBalance),
+    Balance = decimal:sub(In, Out),
 
     Accounts = [
         #{
             id => Addr,
             balances => [
                 #{
-                    balance => BTCBalance,
+                    balance => Balance,
                     symbol => <<"BTC">>
                 }
             ]

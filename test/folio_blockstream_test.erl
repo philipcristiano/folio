@@ -36,7 +36,7 @@ accounts_test() ->
 
     ?assertMatch(
         #{
-            balances := [#{balance := 0.00000007, symbol := <<"BTC">>}],
+            balances := [#{balance := {7, -8}, symbol := <<"BTC">>}],
             id := <<"test_bitcoin_address">>
         },
         Acct

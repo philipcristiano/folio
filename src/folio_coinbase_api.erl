@@ -224,7 +224,6 @@ coinbase_sign(get, Path, State) ->
     NowBin = erlang:integer_to_binary(Now),
 
     SigMesg = <<NowBin/binary, <<"GET">>/binary, Path/binary>>,
-    % SigUpper = hmac:hexlify(crypto:mac(hmac, sha256, Secret, SigMesg)),
     SigUpper = binary:encode_hex(crypto:mac(hmac, sha256, Secret, SigMesg)),
     Sig = string:lowercase(SigUpper),
 

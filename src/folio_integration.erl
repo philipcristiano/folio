@@ -80,6 +80,11 @@ providers() ->
             mod => folio_coinbase_api
         },
         #{
+            name => <<"coinbase_pro">>,
+            type => exchange,
+            mod => folio_coinbase_pro_api
+        },
+        #{
             name => <<"bitcoin">>,
             type => chain,
             mod => folio_blockstream

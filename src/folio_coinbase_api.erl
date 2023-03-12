@@ -100,6 +100,7 @@ cb_to_account(#{
         ]
     }.
 
+% https://docs.cloud.coinbase.com/sign-in-with-coinbase/docs/api-transactions
 -spec type_to_partial_transaction(binary()) -> map().
 type_to_partial_transaction(T = <<"buy">>) ->
     #{
@@ -127,13 +128,15 @@ type_to_partial_transaction(T = <<"fiat_withdrawal">>) ->
         description => T
     };
 type_to_partial_transaction(T = <<"exchange_deposit">>) ->
+    % Deposit money into Coinbase Pro
     #{
-        direction => in,
+        direction => out,
         description => T
     };
 type_to_partial_transaction(T = <<"exchange_withdrawal">>) ->
+    % Withdraw money from Coinbase Pro
     #{
-        direction => out,
+        direction => in,
         description => T
     };
 type_to_partial_transaction(T = <<"inflation_reward">>) ->

@@ -149,7 +149,7 @@ integration_accounts(C, IntegrationID) ->
 -spec transactions(epgsql:connection()) -> {ok, [account_transactions()]}.
 transactions(C) ->
     Query =
-        "SELECT * FROM integration_account_transactions ORDER BY timestamp DESC;",
+        "SELECT * FROM integration_account_transactions as iat JOIN integrations AS i ON iat.integration_id = i.id ORDER BY timestamp DESC;",
     {ok, A} = fdb:select(C, Query, []),
     {ok, A}.
 

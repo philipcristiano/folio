@@ -38,7 +38,7 @@ handle_req(
     _Body,
     State
 ) ->
-    ?LOG_INFO(#{message => getAccounts}),
+    ?LOG_DEBUG(#{message => getAccounts}),
 
     {ok, C} = fdb:connect(),
     {ok, Accounts} = folio_integration:integration_accounts(C, IntegrationID),

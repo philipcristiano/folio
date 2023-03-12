@@ -156,6 +156,7 @@
         <thead class="bg-gray-50">
             <tr>
               <th scope="col" class="px-6 py-4 font-medium text-gray-900">Datetime</th>
+              <th scope="col" class="px-6 py-4 font-medium text-gray-900">Provider</th>
               <th scope="col" class="px-6 py-4 font-medium text-gray-900">Symbol</th>
               <th scope="col" class="px-6 py-4 font-medium text-gray-900">Direction</th>
               <th scope="col" class="px-6 py-4 font-medium text-gray-900">Amount</th>
@@ -166,6 +167,7 @@
         {#each transactions as tx}
         <tr>
             <td>{tx.timestamp}</td>
+            <td>{tx.provider_name}</td>
             <td>{tx.symbol}</td>
             <td>{tx.direction}</td>
             <td>{tx.amount}</td>

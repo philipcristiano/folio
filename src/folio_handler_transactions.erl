@@ -63,6 +63,7 @@ fmt_account_transaction(#{
     direction := Direction,
     symbol := Symbol,
     amount := Amount,
+    provider_name := PN,
     type := Type,
     description := Description
 }) ->
@@ -74,6 +75,7 @@ fmt_account_transaction(#{
         direction => Direction,
         symbol => Symbol,
         amount => Amount,
+        provider_name => PN,
         type => Type,
         description => Description
     }.

@@ -3,7 +3,13 @@
 -include_lib("kernel/include/logger.hrl").
 -include_lib("opentelemetry_api/include/otel_tracer.hrl").
 
--export([providers/0, provider_by_name/1, provider_setup_properties/1, add_integration/2]).
+-export([
+    providers/0,
+    provider_by_name/1,
+    provider_setup_properties/1,
+    add_integration/2,
+    delete_integration/2
+]).
 -export([fetch_integration_accounts/1, fetch_integration_account_transactions/2]).
 
 -export([integrations/0, integrations/1, integration_by_id/2]).
@@ -117,6 +123,17 @@ add_integration(Name, AccountProperties) ->
 
     ok = Mod:add(IntegrationID, AccountProperties),
     {ok, Integration}.
+
+-spec delete_integration(epgsql:connection(), id()) -> ok.
+delete_integration(C, ID) ->
+    IntegrationQuery = #{id => ID},
+    RelatedQuery = #{integration_id => ID},
+    {ok, _} = fdb:delete(C, integrations, IntegrationQuery),
+    {ok, _} = fdb:delete(C, integration_credentials, RelatedQuery),
+    {ok, _} = fdb:delete(C, integration_accounts, RelatedQuery),
+    {ok, _} = fdb:delete(C, integration_account_balances, RelatedQuery),
+    {ok, _} = fdb:delete(C, integration_account_transactions, RelatedQuery),
+    ok.
 
 -spec fetch_integration_accounts(integration()) -> any().
 fetch_integration_accounts(Integration = #{provider_name := PN}) ->

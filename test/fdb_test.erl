@@ -305,3 +305,27 @@ select_all_table_test() ->
     ?assertMatch({ok, [#{foo := <<"bar">>, one := 1, id := <<"retid">>}]}, Ret),
     ?assertMatch([Conn, Statement, []], Args),
     folio_meck:unload(?MOCK_MODS).
+
+delete_test() ->
+    folio_meck:load(?MOCK_MODS),
+    Conn = make_ref(),
+
+    Statement = "DELETE FROM example_table WHERE foo = $1 AND one = $2;",
+    ok = meck:expect(epgsql, equery, [
+        {
+            [
+                Conn,
+                '_',
+                [<<"bar">>, 1]
+            ],
+            {ok, 1}
+        }
+    ]),
+
+    Ret = ?MUT:delete(Conn, example_table, #{foo => <<"bar">>, one => 1}),
+
+    [{equery, Args}] = folio_meck:history_calls(epgsql),
+
+    ?assertMatch({ok, 1}, Ret),
+    ?assertMatch([Conn, Statement, [<<"bar">>, 1]], Args),
+    folio_meck:unload(?MOCK_MODS).

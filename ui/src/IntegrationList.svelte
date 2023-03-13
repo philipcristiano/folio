@@ -78,6 +78,18 @@
         message = json.message;
     };
   }
+  async function deleteIntegration(integration) {
+    let response = await fetch("/integrations/" + integration.id, {
+        method: "DELETE",
+    });
+    let json = await response.json()
+    if (response.ok) {
+        message = "Integration Deleted";
+        getIntegrations();
+    } else {
+        message = json.message;
+    };
+  }
   async function getIntegrationAccounts(integration) {
     integration['accounts'] = [];
     let response = await fetch("/integrations/" + integration.id + "/accounts", {
@@ -144,6 +156,7 @@
         <div>
             <Integration {...integration} />
             <button type="submit" on:click={() => syncIntegration(integration)}>Sync</button>
+            <button type="submit" on:click={() => deleteIntegration(integration)}>Delete</button>
         </div>
         {/each}
 

@@ -3,7 +3,7 @@
 -include_lib("kernel/include/logger.hrl").
 
 -export([connect/0, close/1, schema/0, run/2]).
--export([write/3, select/3]).
+-export([write/3, select/3, delete/3]).
 
 % -type user() :: #{
 %     id := user_id(),
@@ -219,6 +219,32 @@ select(Conn, Statement, PositionalValues) when is_list(Statement), is_list(Posit
         {ok, RetCols, RetData} ->
             {ok, serialise(RetCols, RetData)}
     end.
+
+delete(Conn, Table, Data) when is_atom(Table) ->
+    Fun = fun(K, V, {Count, Statements, Vals}) ->
+        FCount = Count + 1,
+        Statement = lists:flatten([
+            erlang:atom_to_list(K), " = ", "$", erlang:integer_to_list(FCount)
+        ]),
+        FStatement = Statements ++ [Statement],
+        FVal = Vals ++ [V],
+        {FCount, FStatement, FVal}
+    end,
+    {_C, QueryStatements, SQLVals} = maps:fold(Fun, {0, [], []}, Data),
+    QueryStatement = lists:join(" AND ", QueryStatements),
+    Where =
+        case QueryStatement of
+            [] -> "";
+            Else -> [" WHERE ", Else]
+        end,
+
+    Statement = lists:flatten([
+        "DELETE FROM ",
+        erlang:atom_to_list(Table),
+        Where,
+        ";"
+    ]),
+    epgsql:equery(Conn, Statement, SQLVals).
 
 determine_migrations(Conn, Schema) ->
     lists:foldl(fun(I, Acc) -> Acc ++ determine_migration(Conn, I) end, [], Schema).

@@ -94,6 +94,11 @@ providers() ->
             name => <<"bitcoin">>,
             type => chain,
             mod => folio_blockstream
+        },
+        #{
+            name => <<"gemini">>,
+            type => exchange,
+            mod => folio_gemini_api
         }
     ].
 

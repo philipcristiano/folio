@@ -34,7 +34,7 @@
 <div class="justify-center" >
         Provider: { provider_name }
 
-        {#each accounts as integration_account (integration_account.external_id)}
+        {#each accounts as integration_account (integration_account.external_id, integration_account.symbol)}
         <div class="max-w-md">
         Symbol: { integration_account.symbol }
         Balance: { integration_account.balance }

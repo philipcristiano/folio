@@ -19,9 +19,22 @@ folio_init() ->
     ok.
 
 setup_properties() ->
-    #{
-        address => #{}
-    }.
+    [
+        #{
+            address => #{}
+        },
+        #{
+            xyxpub => #{},
+            derivation => #{},
+            format => #{
+                choices => [
+                    #{p2pkh => #{description => <<"Addresses starting with 1">>}},
+                    #{p2sh => #{description => <<"Addresses starting with 3">>}},
+                    #{bech32 => #{description => <<"Addresses starting with bc1">>}}
+                ]
+            }
+        }
+    ].
 
 add(IntegrationID, #{address := Addr}) ->
     Credentials = #{address => Addr},

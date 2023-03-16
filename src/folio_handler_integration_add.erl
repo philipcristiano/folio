@@ -30,7 +30,10 @@ trails_for_integration_spec(Name, State, Spec) ->
     Path = <<?LIST_PATH/binary, <<"/">>/binary, Name/binary>>,
     trails:trail(Path, ?MODULE, State, Metadata).
 
-props_to_schema(Props) ->
+props_to_schema(PropMaps) when is_list(PropMaps) ->
+    PropSchemas = lists:map(fun props_to_schema/1, PropMaps),
+    #{ oneOf => PropSchemas};
+props_to_schema(Props) when is_map(Props) ->
     Names = maps:keys(Props),
     SchemaProps = maps:map(fun(K, _V) -> folio_http:make_string_property(K) end, Props),
     #{

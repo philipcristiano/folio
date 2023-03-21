@@ -149,17 +149,16 @@ blockstream_tx_to_transactions(
     ),
 
     OutTransactions = lists:filtermap(
-        fun(#{<<"value">> := Value, <<"scriptpubkey_address">> := TXAddr}) ->
-            Include = TXAddr == Addr,
-            TX = #{
+        fun(AddrInfo) ->
+            {Include, TXAttrs} = addrinfo_to_attrs(Addr, AddrInfo),
+            TX = maps:merge(TXAttrs, #{
                 source_id => TXID,
                 datetime => BlockTime,
-                amount => sats_to_btc(Value),
                 type => undefined,
                 symbol => <<"BTC">>,
                 direction => out,
                 description => <<"">>
-            },
+            }),
             {Include, TX}
         end,
         AddrIns
@@ -198,6 +197,17 @@ blockstream_tx_to_transactions(
         tx_in => InTransactions
     }),
     {OutTransactions ++ InTransactions, State1}.
+
+addrinfo_to_attrs(Addr, #{<<"value">> := Value, <<"scriptpubkey_address">> := TXAddr}) ->
+    Include = TXAddr == Addr,
+    Val = sats_to_btc(Value),
+    {Include, #{amount => Val}};
+addrinfo_to_attrs(Addr, #{
+    <<"prevout">> := #{<<"value">> := Value, <<"scriptpubkey_address">> := TXAddr}
+}) ->
+    Include = TXAddr == Addr,
+    Val = sats_to_btc(Value),
+    {Include, #{amount => Val}}.
 
 -spec request(binary()) -> {ok, map() | list()} | {error, binary()}.
 request(PathQS) ->

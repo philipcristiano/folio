@@ -32,8 +32,8 @@ trails_for_integration_spec(Name, State, Spec) ->
 
 props_to_schema(PropMaps) when is_list(PropMaps) ->
     PropSchemas = lists:map(fun props_to_schema/1, PropMaps),
-    #{ oneOf => PropSchemas};
-props_to_schema(Props) when is_map(Props) ->
+    #{oneOf => PropSchemas};
+props_to_schema(_ProviderSetup = #{fields := Props}) when is_map(Props) ->
     Names = maps:keys(Props),
     SchemaProps = maps:map(fun(K, _V) -> folio_http:make_string_property(K) end, Props),
     #{
@@ -41,8 +41,23 @@ props_to_schema(Props) when is_map(Props) ->
         properties => SchemaProps
     }.
 
-props_to_form_input(Props) ->
-    maps:keys(Props).
+props_to_form_input(SetupPropertiesList) when is_list(SetupPropertiesList) ->
+    lists:map(fun props_to_form_input/1, SetupPropertiesList);
+props_to_form_input(#{fields := Fields}) when is_map(Fields) ->
+    FormMap = maps:map(fun prop_to_form_input/2, Fields),
+    maps:values(FormMap).
+
+prop_to_form_input(Name, _Config = #{choices := Choices}) ->
+    #{
+        name => Name,
+        type => choice,
+        choices => maps:keys(Choices)
+    };
+prop_to_form_input(Name, _Config) ->
+    #{
+        name => Name,
+        type => text
+    }.
 
 init(Req, State) ->
     folio_http_session:init(Req),

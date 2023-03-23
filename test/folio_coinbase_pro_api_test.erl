@@ -210,13 +210,14 @@ load() ->
     ok.
 
 credentials() ->
+    [#{fields := Fields}] = ?MUT:setup_properties(),
     #{secret := Secret} =
         CredentialsProps = maps:map(
             fun(K, _V) ->
                 BinK = erlang:atom_to_binary(K),
                 <<<<"test_">>/binary, BinK/binary>>
             end,
-            ?MUT:setup_properties()
+            Fields
         ),
     B64Secret = base64:encode(Secret),
     CredentialsProps#{secret => B64Secret}.

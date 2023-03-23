@@ -21,17 +21,21 @@ folio_init() ->
 setup_properties() ->
     [
         #{
-            address => #{}
+            fields => #{
+                address => #{}
+            }
         },
         #{
-            xyxpub => #{},
-            derivation => #{},
-            format => #{
-                choices => [
-                    #{p2pkh => #{description => <<"Addresses starting with 1">>}},
-                    #{p2sh => #{description => <<"Addresses starting with 3">>}},
-                    #{bech32 => #{description => <<"Addresses starting with bc1">>}}
-                ]
+            fields => #{
+                xyzpub => #{},
+                derivation => #{},
+                format => #{
+                    choices => #{
+                        p2pkh => #{description => <<"Addresses starting with 1">>},
+                        p2sh => #{description => <<"Addresses starting with 3">>}
+                        %#{bech32 => #{description => <<"Addresses starting with bc1">>}}
+                    }
+                }
             }
         }
     ].
@@ -39,7 +43,14 @@ setup_properties() ->
 add(IntegrationID, #{address := Addr}) ->
     Credentials = #{address => Addr},
     ok = folio_credentials_store:set_credentials(IntegrationID, Credentials),
+    ok;
+add(IntegrationID, #{derivation := D, format := AddrFormat, xyzpub := Pub}) ->
+    Credentials = #{deriviation => D, format => address_format_to_atom(AddrFormat), xyzpub => Pub},
+    ok = folio_credentials_store:set_credentials(IntegrationID, Credentials),
     ok.
+
+address_format_to_atom(<<"p2sh">>) -> p2sh;
+address_format_to_atom(<<"p2pkh">>) -> p2pkh.
 
 accounts_init(_Integration = #{id := IntegrationID}) ->
     #{address := Addr} = folio_credentials_store:get_credentials(IntegrationID),

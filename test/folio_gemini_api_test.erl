@@ -288,12 +288,13 @@ load() ->
     ok.
 
 credentials() ->
+    [#{fields := Fields}] = ?MUT:setup_properties(),
     maps:map(
         fun(K, _V) ->
             BinK = erlang:atom_to_binary(K),
             <<<<"test_">>/binary, BinK/binary>>
         end,
-        ?MUT:setup_properties()
+        Fields
     ).
 
 earn_deposit(DT) ->

@@ -61,6 +61,11 @@
     mod := atom()
 }.
 
+-export_type([setup_property_config/0]).
+-type setup_property_config() :: #{
+    fields := map()
+}.
+
 -type completeness() :: incomplete | complete.
 
 %%%
@@ -72,7 +77,7 @@
 -callback accounts_init(integration()) -> state().
 -callback add(id(), map()) -> ok.
 -callback accounts(state()) -> {completeness(), list(account()), state()}.
--callback setup_properties() -> map().
+-callback setup_properties() -> list(setup_property_config()).
 -callback account_transactions_init(integration(), account()) -> state().
 -callback account_transactions(state()) -> {completeness(), account_transactions(), state()}.
 

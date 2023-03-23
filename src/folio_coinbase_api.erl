@@ -14,10 +14,14 @@ folio_init() ->
     ok.
 
 setup_properties() ->
-    #{
-        key => #{},
-        secret => #{}
-    }.
+    [
+        #{
+            fields => #{
+                key => #{},
+                secret => #{}
+            }
+        }
+    ].
 
 add(IntegrationID, #{key := K, secret := S}) ->
     Credentials = #{key => K, secret => S},

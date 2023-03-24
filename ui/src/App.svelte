@@ -1,7 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
-	import Login from './Login.svelte';
 	import IntegrationList from './IntegrationList.svelte';
+	import TransactionList from './TransactionList.svelte';
 
 
 	onMount(() => {
@@ -9,13 +9,15 @@
 
 </script>
 
-<main class="flex container xl ">
-    <h1>Hello!</h1>
-    <IntegrationList />
+<main class="flex container xl">
+    <div class="columns-2">
+        <IntegrationList />
+        <TransactionList />
+    </div>
 
 </main>
 
-<style>
+<style global lang="postcss">
     @tailwind base;
     @tailwind components;
     @tailwind utilities;

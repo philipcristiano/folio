@@ -19,13 +19,10 @@ start(_Type, _Args) ->
 
     ok = init_folio_modules(),
 
+    AppRoutes = [],
     StaticRoute = [
         {"/", cowboy_static, cowboy_priv_path_for_file(IsLocalDev, App, "public/index.html")},
         {"/[...]", cowboy_static, cowboy_priv_path_for_dir(IsLocalDev, App, "public")}
-    ],
-    AppRoutes = [
-        {"/accounts", folio_handler_accounts, []},
-        {"/ws", folio_ws, #{module => folio_ws_protocol}}
     ],
     AllRoutes = AppRoutes ++ setup_trails() ++ StaticRoute,
     Dispatch = trails:single_host_compile(AllRoutes),

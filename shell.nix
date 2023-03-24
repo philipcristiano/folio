@@ -17,6 +17,9 @@ in stdenv.mkDerivation {
   buildInputs = [ pkgs.gnumake
                   pkgs.erlangR25
                   pkgs.wget
+                  pkgs.autoconf
+                  pkgs.autoreconfHook
+                  pkgs.gmp
 
                   pkgs.foreman
                   pkgs.postgresql

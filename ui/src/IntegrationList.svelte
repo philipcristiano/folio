@@ -3,56 +3,13 @@
   import { onMount } from 'svelte';
 
   import Integration from './Integration.svelte';
+  import IntegrationSetup from './IntegrationSetup.svelte';
 
   let message = "";
   let address = "";
-  let integration_names = [];
-  let integration_setups = [];
   let integrations = [];
   let transactions = [];
 
-  async function getIntegrationNames() {
-    let response = await fetch("/integration/add", {
-        method: "GET",
-    });
-    let json = await response.json()
-    if (response.ok) {
-        json.integrations.forEach(e => getIntegrationSetup(e));
-        integration_names = json.integrations;
-    } else {
-        message = json.message;
-    };
-  }
-  async function getIntegrationSetup(Name) {
-    let response = await fetch("/integration/add/" + Name, {
-        method: "GET",
-    });
-    let json = await response.json()
-    if (response.ok) {
-        let setup = {name: Name,
-                 input_fields: json.setup_properties,
-                 inputs: {}};
-        integration_setups = [...integration_setups, setup];
-    } else {
-        message = json.message;
-    };
-  }
-  async function setupIntegration(integration) {
-
-      let response = await fetch("/integration/add/" + integration.name, {
-          method: "POST",
-          headers: {
-              'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(integration.inputs),
-      })
-      let json = await response.json()
-      if (response.ok) {
-          message = "account added: " + Name
-      } else {
-          message = json.message;
-      };
-  }
   async function getIntegrations() {
     let response = await fetch("/integrations", {
         method: "GET",
@@ -116,7 +73,6 @@
   }
 
   onMount(() => {
-      getIntegrationNames();
       getIntegrations();
       getTransactions();
   });
@@ -129,27 +85,7 @@
             <div><h2> {message} </h2></div>
         {/if}
 
-        <div class="columns-1">
-        Available integration providers:
-        {#each integration_names as addableIntegrationName }
-        <div>
-            { addableIntegrationName }
-        </div>
-        {/each}
-        </div>
-
-        Add a new integration:
-        {#each integration_setups as addableIntegration }
-        <div class="columns-2">
-            <div> Name: { addableIntegration.name } </div>
-            <div>
-                {#each addableIntegration.input_fields as field }
-                <input bind:value={addableIntegration.inputs[field]} placeholder="{field}">
-                {/each}
-                <button type="submit" on:click={() => setupIntegration(addableIntegration)}>Add</button>
-            </div>
-        </div>
-        {/each}
+        <IntegrationSetup />
 
         Current installed integrations:
         {#each integrations as integration (integration.id)}

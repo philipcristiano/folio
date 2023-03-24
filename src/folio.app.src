@@ -29,6 +29,7 @@
         cowboy,
         cowboy_swagger,
         specified_handler,
+        btcau,
         throttle
     ]},
     {env, []},

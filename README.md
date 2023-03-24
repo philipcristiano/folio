@@ -23,3 +23,4 @@ sh ./db_init.sh
 `integration` - An installed instance of a provider. A particular Coinbase account or Bitcoin address
 
 `account` - a collection of balances and transactions. Multiple accounts may come from an integration.
+

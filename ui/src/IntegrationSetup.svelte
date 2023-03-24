@@ -67,21 +67,21 @@
     <div><h2> {message} </h2></div>
 {/if}
 
-<div class="columns-1">
+<div class="max-w-sm">
 Available integration providers:
-{#each integration_names as addableIntegrationName }
-<div>
-    { addableIntegrationName }
-</div>
-{/each}
+  <ul>
+  {#each integration_names as addableIntegrationName }
+    <li> { addableIntegrationName } </li>
+  {/each}
+  </ul>
 </div>
 
+<div class="max-w-md">
 Add a new integration:
 {#each integration_setups as addableIntegration }
-<div class="columns-2">
+<div class="border-black">
     <div> Name: { addableIntegration.name } </div>
-    <div>
-        {#each addableIntegration.input_fields as field }
+    <div>{#each addableIntegration.input_fields as field }<div>
 
           {#if field.type == "text" }
           <input bind:value={addableIntegration.inputs[field.name]} placeholder="{field.name}">
@@ -95,8 +95,11 @@ Add a new integration:
           {:else }
           Unknown input type {field.type}
           {/if}
-        {/each}
-        <button type="submit" on:click={() => setupIntegration(addableIntegration)}>Add</button>
-    </div>
+
+    </div>{/each}</div>
+        <div> <button type="submit" on:click={() => setupIntegration(addableIntegration)}>Add</button></div>
 </div>
+<hr>
 {/each}
+
+</div>

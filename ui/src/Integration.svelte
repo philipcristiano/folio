@@ -4,10 +4,10 @@
 
   export let id;
   export let provider_name;
+  export let accounts = [];
 
   let message = "";
 
-  let accounts = [];
 
   async function getIntegrationAccounts() {
     let response = await fetch("/integrations/" + id + "/accounts", {
@@ -39,6 +39,7 @@
         Symbol: { integration_account.symbol }
         Balance: { integration_account.balance }
         </div>
+        <hr />
         {/each}
 
 </div>

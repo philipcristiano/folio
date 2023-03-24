@@ -39,7 +39,6 @@
         Symbol: { integration_account.symbol }
         Balance: { integration_account.balance }
         </div>
-        <hr />
         {/each}
 
 </div>

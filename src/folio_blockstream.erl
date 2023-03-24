@@ -28,7 +28,6 @@ setup_properties() ->
         #{
             fields => #{
                 xyzpub => #{},
-                derivation => #{},
                 format => #{
                     choices => #{
                         p2pkh => #{description => <<"Addresses starting with 1">>},
@@ -52,10 +51,33 @@ add(IntegrationID, #{derivation := D, format := AddrFormat, xyzpub := Pub}) ->
 address_format_to_atom(<<"p2sh">>) -> p2sh;
 address_format_to_atom(<<"p2pkh">>) -> p2pkh.
 
-accounts_init(_Integration = #{id := IntegrationID}) ->
-    #{address := Addr} = folio_credentials_store:get_credentials(IntegrationID),
+accounts_init(Integration = #{id := IntegrationID}) ->
+    Creds = folio_credentials_store:get_credentials(IntegrationID),
+    accounts_init_by_credentials(Integration, Creds).
+
+accounts_init_by_credentials(_Integration = #{id := IntegrationID}, #{address := Addr}) ->
     #{
         address => Addr,
+        integration_id => IntegrationID
+    };
+accounts_init_by_credentials(_Integration = #{id := IntegrationID}, #{
+    xyzpub := Pub, format := Format
+}) ->
+    #{
+        format => address_format_to_atom(Format),
+        xyzpub => Pub,
+        derivations => [
+            #{
+                account => 0,
+                index => 0,
+                gap_remaining => 20
+            },
+            #{
+                account => 1,
+                index => 0,
+                gap_remaining => 20
+            }
+        ],
         integration_id => IntegrationID
     }.
 
@@ -65,6 +87,56 @@ sats_to_btc(Sats) ->
     SatsPerBTC = decimal:to_decimal(100000000, ?DOPTS),
     decimal:divide(SatD, SatsPerBTC, ?DOPTS).
 
+% If no derviations remaining, move accounts is complete
+accounts(State = #{xyzpub := _Pub, derivations := []}) ->
+    {complete, [], State};
+% If no gap remaining, move on to the next derivation
+accounts(State = #{xyzpub := _Pub, derivations := [#{gap_remaining := GR} | TD]}) when GR < 0 ->
+    accounts(State#{derivations => TD});
+% Derivations and gap remaining, check 1 address
+accounts(State = #{format := Format, xyzpub := Pub, derivations := [HD | TD]}) ->
+    #{
+        account := AccountNum,
+        index := IndexNum,
+        gap_remaining := GR
+    } = HD,
+
+    Derivation = derivation(AccountNum, IndexNum),
+
+    Addr = pub_to_address(Pub, Derivation, Format),
+
+    {ok, #{
+        <<"chain_stats">> := #{
+            <<"funded_txo_sum">> := InSats,
+            <<"spent_txo_sum">> := OutSats
+        }
+    }} = balance(Addr),
+
+    % If there are transactions, reset gap limit
+    NextDerivations =
+        case {InSats, OutSats} of
+            {0, 0} ->
+                [
+                    HD#{
+                        gap_remaining => GR - 1,
+                        index => IndexNum + 1
+                    }
+                    | TD
+                ];
+            {_, _} ->
+                [
+                    HD#{
+                        gap_remaining => 20,
+                        index => IndexNum + 1
+                    }
+                    | TD
+                ]
+        end,
+
+    Balance = sats_to_balance(InSats, OutSats),
+    Accounts = [to_account(Addr, Balance)],
+
+    {incomplete, Accounts, State#{derivations => NextDerivations}};
 accounts(State = #{address := Addr}) ->
     {ok, #{
         <<"chain_stats">> := #{
@@ -73,30 +145,16 @@ accounts(State = #{address := Addr}) ->
         }
     }} = balance(Addr),
 
-    In = sats_to_btc(InSats),
-    Out = sats_to_btc(OutSats),
+    Balance = sats_to_balance(InSats, OutSats),
+    Accounts = [to_account(Addr, Balance)],
 
-    % Blockstream returns in sats, divide to get whole BTC.
-    Balance = decimal:sub(In, Out),
-
-    Accounts = [
-        #{
-            id => Addr,
-            balances => [
-                #{
-                    balance => Balance,
-                    symbol => <<"BTC">>
-                }
-            ]
-        }
-    ],
     {complete, Accounts, State}.
 
 account_transactions_init(#{id := IntegrationID}, #{id := AccountID}) ->
-    #{address := Addr} = folio_credentials_store:get_credentials(IntegrationID),
+    % #{address := Addr} = folio_credentials_store:get_credentials(IntegrationID),
     State = #{
         account_id => AccountID,
-        address => Addr,
+        address => AccountID,
         integration_id => IntegrationID,
         % 0 can be used to instead of omitting. The code is simpler without having to handle if this exists or not
         last_seen_txid => <<"0">>
@@ -270,3 +328,31 @@ time_to_reset(I) when I < 2 ->
     rand:uniform(30);
 time_to_reset(N) ->
     N.
+
+derivation(Account, Index) ->
+    AccountBin = erlang:integer_to_binary(Account),
+    IndexBin = erlang:integer_to_binary(Index),
+    <<<<"M/">>/binary, AccountBin/binary, <<"/">>/binary, IndexBin/binary>>.
+
+pub_to_address(Pub, Derivation, p2sh) ->
+    btcau:pub_to_p2wpkh_in_p2sh(Pub, Derivation);
+pub_to_address(Pub, Derivation, p2pkh) ->
+    btcau:pub_to_p2pkh(Pub, Derivation).
+
+sats_to_balance(InSats, OutSats) ->
+    In = sats_to_btc(InSats),
+    Out = sats_to_btc(OutSats),
+
+    Balance = decimal:sub(In, Out),
+    Balance.
+
+to_account(Addr, Balance) ->
+    #{
+        id => Addr,
+        balances => [
+            #{
+                balance => Balance,
+                symbol => <<"BTC">>
+            }
+        ]
+    }.

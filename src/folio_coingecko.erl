@@ -20,11 +20,12 @@
 -type fiat_value() :: #{
     currency := binary(),
     amount := decimal:decimal(),
+    datetime := calendar:datetime(),
     asset_id := asset_id()
 }.
 
 folio_init() ->
-    ok = throttle:setup(?MODULE, 1, 10000),
+    ok = throttle:setup(?MODULE, 1, 15000),
     ok.
 
 -spec get_assets() -> {ok, list(asset())}.
@@ -50,10 +51,12 @@ price_for_asset(#{id := ID}) ->
 
 price_data_to_maps(Data) ->
     AssetMap = maps:map(
-        fun(Name, #{<<"usd">> := Amount}) ->
+        fun(Name, #{<<"usd">> := Amount, <<"last_updated_at">> := Timestamp}) ->
+            DT = qdate:to_date(Timestamp),
             #{
                 currency => <<"usd">>,
                 amount => to_decimal(Amount),
+                datetime => DT,
                 asset_id => Name
             }
         end,
@@ -88,6 +91,15 @@ request(PathQS, Opts = #{attempts_remaining := AR}) ->
         {error, closed} ->
             request(PathQS, Opts#{attempts_remaining => AR - 1});
         {error, timeout} ->
+            request(PathQS, Opts#{attempts_remaining => AR - 1});
+        {ok, 429, _RespHeaders, _Body} ->
+            rate_limit(),
+            rate_limit(),
+            ?LOG_INFO(#{
+                message => rate_limited_by_provider,
+                provider => coingecko,
+                url => URL
+            }),
             request(PathQS, Opts#{attempts_remaining => AR - 1});
         {ok, _RespCode, _RespHeaders, Body} ->
             case jsx:is_json(Body) of

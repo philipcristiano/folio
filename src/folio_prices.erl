@@ -26,7 +26,7 @@
     code_change/3
 ]).
 
--export([sync_assets/0, current_price_for_symbol/1]).
+-export([sync_assets/0, sync_asset_prices/0, current_price_for_symbol/1, fetch_and_store_price/1]).
 -record(state, {}).
 
 %%%===================================================================
@@ -64,13 +64,27 @@ init([]) ->
 sync_assets() ->
     gen_server:cast(?MODULE, sync_assets).
 
+sync_asset_prices() ->
+    gen_server:cast(?MODULE, sync_asset_prices).
+
 current_price_for_symbol(Symbol) ->
     {ok, C} = fdb:connect(),
-    {ok, [DBA]} = fdb:select(C, assets, #{symbol => Symbol}),
+    R = current_price_for_symbol(C, Symbol),
     fdb:close(C),
+    R.
+current_price_for_symbol(C, Symbol) ->
+    {ok, [DBA]} = fdb:select(C, assets, #{symbol => Symbol}),
     Asset = db_asset_to_asset(DBA),
     {ok, Val} = folio_coingecko:price_for_asset(Asset),
     {ok, Val}.
+
+fetch_and_store_price(ID) ->
+    {ok, C} = fdb:connect(),
+    {ok, [DBA]} = fdb:select(C, assets, #{external_id => ID}),
+    Asset = db_asset_to_asset(DBA),
+    {ok, Val} = folio_coingecko:price_for_asset(Asset),
+    write_asset_price(C, Asset, Val),
+    fdb:close(C).
 
 db_asset_to_asset(#{external_id := ID, symbol := S, name := Name}) ->
     #{id => ID, symbol => S, name => Name}.
@@ -110,7 +124,63 @@ handle_cast(sync_assets, State) ->
     {ok, Assets} = folio_coingecko:get_assets(),
     {ok, State1} = write_assets(Assets, State),
 
-    {noreply, State1}.
+    {noreply, State1};
+handle_cast(sync_asset_prices, State) ->
+    {ok, C} = fdb:connect(),
+    {ok, AllBalances} = fdb:select(C, integration_account_balances, #{}),
+    Balances = lists:filter(
+        fun(#{balance := BalanceBin}) ->
+            Balance = to_decimal(BalanceBin),
+            case decimal:is_zero(Balance) of
+                true -> false;
+                false -> true
+            end
+        end,
+        AllBalances
+    ),
+    SymbolList = lists:map(fun(#{symbol := S}) -> string:lowercase(S) end, Balances),
+    SymbolsToFetch = sets:to_list(sets:from_list(SymbolList)),
+
+    AssetLists = lists:map(
+        fun(S) ->
+            {ok, Assets} = fdb:select(C, assets, #{symbol => S}),
+            ?LOG_INFO(#{
+                message => look_up_asset,
+                symbol => S,
+                assets => Assets
+            }),
+            Assets
+        end,
+        SymbolsToFetch
+    ),
+
+    DBAAssets = lists:flatten(AssetLists),
+    Assets = lists:map(fun db_asset_to_asset/1, DBAAssets),
+
+    ?LOG_INFO(#{
+        message => assets_to_fetch_and_save,
+        assets => Assets,
+        asset_lists => AssetLists,
+        symbol_list => SymbolList,
+        symbols_to_fetch => SymbolsToFetch,
+        dba_assets => DBAAssets
+    }),
+
+    lists:map(
+        fun(A) ->
+            {ok, Val} = folio_coingecko:price_for_asset(A),
+            ?LOG_INFO(#{
+                message => price_for_asset,
+                asset => A,
+                price => Val
+            }),
+            write_asset_price(C, A, Val)
+        end,
+        Assets
+    ),
+
+    fdb:close(C),
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -165,3 +235,23 @@ write_assets(Assets, State) ->
     ),
     fdb:close(C),
     {ok, State}.
+
+-spec write_asset_price(epgsql:connection(), folio_coingeck:asset(), folio_coingecko:fiat_value()) ->
+    ok.
+write_asset_price(C, #{id := ID, symbol := S}, #{currency := Cu, amount := A, datetime := DT}) ->
+    AssetPrice = #{
+        source => <<"coingecko">>,
+        symbol => S,
+        external_id => ID,
+        amount => decimal:to_binary(A),
+        timestamp => DT,
+        fiat_symbol => Cu
+    },
+    fdb:write(C, asset_prices, AssetPrice),
+    ok.
+
+to_decimal(I) when is_number(I) ->
+    decimal:to_decimal(I, #{precision => 100, rounding => round_floor});
+to_decimal(F) when is_binary(F) ->
+    L = size(F),
+    decimal:to_decimal(F, #{precision => L, rounding => round_floor}).

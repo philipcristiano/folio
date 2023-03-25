@@ -38,6 +38,19 @@ schema() ->
         },
         #{
             type => table,
+            name => "asset_prices",
+            columns => [
+                #{name => "source", type => "text"},
+                #{name => "symbol", type => "text"},
+                #{name => "external_id", type => "text"},
+                #{name => "amount", type => "numeric"},
+                #{name => "timestamp", type => "timestamp"},
+                #{name => "fiat_symbol", type => "text"}
+            ],
+            primary_key => ["source", "external_id", "symbol", "fiat_symbol", "timestamp"]
+        },
+        #{
+            type => table,
             name => "integrations",
             columns => [
                 #{name => "id", type => "uuid"},

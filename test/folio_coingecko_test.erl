@@ -39,6 +39,7 @@ price_for_asset_test() ->
         #{
             amount := {2786857, -2},
             asset_id := AssetID,
+            datetime := {{2023, 3, 25}, {16, 46, 5}},
             currency := <<"usd">>
         },
         Val

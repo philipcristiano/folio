@@ -26,7 +26,7 @@
     code_change/3
 ]).
 
--export([sync_assets/0]).
+-export([sync_assets/0, current_price_for_symbol/1]).
 -record(state, {}).
 
 %%%===================================================================
@@ -64,6 +64,16 @@ init([]) ->
 sync_assets() ->
     gen_server:cast(?MODULE, sync_assets).
 
+current_price_for_symbol(Symbol) ->
+    {ok, C} = fdb:connect(),
+    {ok, [DBA]} = fdb:select(C, assets, #{symbol => Symbol}),
+    fdb:close(C),
+    Asset = db_asset_to_asset(DBA),
+    {ok, Val} = folio_coingecko:price_for_asset(Asset),
+    {ok, Val}.
+
+db_asset_to_asset(#{external_id := ID, symbol := S, name := Name}) ->
+    #{id => ID, symbol => S, name => Name}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -101,7 +111,6 @@ handle_cast(sync_assets, State) ->
     {ok, State1} = write_assets(Assets, State),
 
     {noreply, State1}.
-
 
 %%--------------------------------------------------------------------
 %% @private

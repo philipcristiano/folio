@@ -1,4 +1,4 @@
--module(coingecko).
+-module(folio_coingecko).
 
 -include_lib("kernel/include/logger.hrl").
 -include_lib("opentelemetry_api/include/otel_tracer.hrl").
@@ -19,7 +19,7 @@ folio_init() ->
 
 -spec get_assets() -> {ok, list(asset())}.
 get_assets() ->
-    Assets = request(<<"/api/v3/coins/list">>),
+    {ok, Assets} = request(<<"/api/v3/coins/list">>),
     AssetMaps = lists:map(
         fun(#{<<"id">> := ID, <<"symbol">> := Symbol, <<"name">> := Name}) ->
             #{id => ID, symbol => Symbol, name => Name}

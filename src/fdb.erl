@@ -27,6 +27,17 @@ schema() ->
     [
         #{
             type => table,
+            name => "assets",
+            columns => [
+                #{name => "external_id", type => "text"},
+                #{name => "symbol", type => "text"},
+                #{name => "source", type => "text"},
+                #{name => "name", type => "text"}
+            ],
+            primary_key => ["external_id", "source"]
+        },
+        #{
+            type => table,
             name => "integrations",
             columns => [
                 #{name => "id", type => "uuid"},

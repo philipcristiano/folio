@@ -13,6 +13,10 @@ init([]) ->
         id => folio_fetcher,
         start => {folio_fetcher, start_link, []}
     },
+    Prices = #{
+        id => folio_prices,
+        start => {folio_prices, start_link, []}
+    },
 
-    Procs = [Fetcher],
+    Procs = [Fetcher, Prices],
     {ok, {{one_for_one, 1, 5}, Procs}}.

@@ -212,15 +212,22 @@ write(Conn, Table, Data) when is_map(Data) ->
             {ok, RetMap}
     end.
 
+val_to_operator({'<', V}) -> {" < ", V};
+val_to_operator({'<=', V}) -> {" <= ", V};
+val_to_operator({'>', V}) -> {" > ", V};
+val_to_operator({'>=', V}) -> {" >= ", V};
+val_to_operator(V) -> {" = ", V}.
+
 -spec select(epgsql:connection(), atom() | list(), map() | list()) -> {ok, list(map())}.
 select(Conn, Table, Data) when is_atom(Table), is_map(Data) ->
     Fun = fun(K, V, {Count, Statements, Vals}) ->
         FCount = Count + 1,
+        {SQLOperator, Val} = val_to_operator(V),
         Statement = lists:flatten([
-            erlang:atom_to_list(K), " = ", "$", erlang:integer_to_list(FCount)
+            erlang:atom_to_list(K), SQLOperator, "$", erlang:integer_to_list(FCount)
         ]),
         FStatement = Statements ++ [Statement],
-        FVal = Vals ++ [V],
+        FVal = Vals ++ [Val],
         {FCount, FStatement, FVal}
     end,
     {_C, QueryStatements, SQLVals} = maps:fold(Fun, {0, [], []}, Data),

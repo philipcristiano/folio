@@ -4,7 +4,7 @@
 -include_lib("opentelemetry_api/include/otel_tracer.hrl").
 
 -export([folio_init/0]).
--export([get_assets/0, price_for_asset/1]).
+-export([get_assets/0, price_for_asset/1, price_for_assets/1]).
 
 -export_type([asset_id/0]).
 -type asset_id() :: binary().
@@ -40,14 +40,19 @@ get_assets() ->
     {ok, AssetMaps}.
 
 -spec price_for_asset(asset()) -> {ok, fiat_value()}.
-price_for_asset(#{id := ID}) ->
+price_for_asset(A) when is_map(A) ->
+    {ok, [Single]} = price_for_assets([A]),
+    {ok, Single}.
+
+price_for_assets(Assets) ->
+    AssetIDs = lists:map(fun(#{id := ID}) -> ID end, Assets),
+    IDsArgs = binary_join:join(<<",">>, AssetIDs),
     Path =
         <<<<"/api/v3/simple/price?vs_currencies=usd&precision=full&include_last_updated_at=true&ids=">>/binary,
-            ID/binary>>,
+            IDsArgs/binary>>,
     {ok, Data} = request(Path),
-    io:format("data ~p~n", [Data]),
-    [Single] = price_data_to_maps(Data),
-    {ok, Single}.
+    DataMaps = price_data_to_maps(Data),
+    {ok, DataMaps}.
 
 price_data_to_maps(Data) ->
     AssetMap = maps:map(
@@ -66,7 +71,7 @@ price_data_to_maps(Data) ->
 
 -spec request(binary()) -> {ok, map() | list()} | {error, binary()}.
 request(PathQS) ->
-    request(PathQS, #{attempts_remaining => 3}).
+    request(PathQS, #{attempts_remaining => 5}).
 
 -spec request(binary(), map()) -> {ok, map() | list()} | {error, binary()}.
 request(PathQS, #{attempts_remaining := AR}) when AR =< 0 ->

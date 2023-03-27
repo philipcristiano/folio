@@ -26,7 +26,13 @@
     code_change/3
 ]).
 
--export([sync_assets/0, sync_asset_prices/0, current_price_for_symbol/1, fetch_and_store_price/1]).
+-export([
+    sync_assets/0,
+    sync_asset_prices/0,
+    fetch_price_for_symbol/1,
+    fetch_and_store_price/1,
+    price_for_asset_id/1, price_for_asset_id/2
+]).
 -record(state, {}).
 
 %%%===================================================================
@@ -67,12 +73,25 @@ sync_assets() ->
 sync_asset_prices() ->
     gen_server:cast(?MODULE, sync_asset_prices).
 
-current_price_for_symbol(Symbol) ->
+price_for_asset_id(AID) ->
     {ok, C} = fdb:connect(),
-    R = current_price_for_symbol(C, Symbol),
+    Resp = price_for_asset_id(C, AID),
+    fdb:close(C),
+    Resp.
+price_for_asset_id(C, AID) ->
+    {ok, P} = fdb:select(
+        C, asset_prices, #{source => "coingecko", external_id => AID, fiat_symbol => <<"usd">>}, [
+            {order_by, timestamp, desc}, {limit, 1}
+        ]
+    ),
+    {ok, P}.
+
+fetch_price_for_symbol(Symbol) ->
+    {ok, C} = fdb:connect(),
+    R = fetch_price_for_symbol(C, Symbol),
     fdb:close(C),
     R.
-current_price_for_symbol(C, Symbol) ->
+fetch_price_for_symbol(C, Symbol) ->
     {ok, [DBA]} = fdb:select(C, assets, #{symbol => Symbol}),
     Asset = db_asset_to_asset(DBA),
     {ok, Val} = folio_coingecko:price_for_asset(Asset),
@@ -166,18 +185,7 @@ handle_cast(sync_asset_prices, State) ->
         dba_assets => DBAAssets
     }),
 
-    lists:map(
-        fun(A) ->
-            {ok, Val} = folio_coingecko:price_for_asset(A),
-            ?LOG_INFO(#{
-                message => price_for_asset,
-                asset => A,
-                price => Val
-            }),
-            write_asset_price(C, A, Val)
-        end,
-        Assets
-    ),
+    fetch_and_write(C, Assets),
 
     fdb:close(C),
     {noreply, State}.
@@ -236,6 +244,22 @@ write_assets(Assets, State) ->
     fdb:close(C),
     {ok, State}.
 
+fetch_and_write(_C, []) ->
+    ok;
+fetch_and_write(C, Assets) ->
+    {AssetBatch, AssetsRest} = split_list(5, Assets),
+    {ok, Vals} = folio_coingecko:price_for_assets(AssetBatch),
+    Pairs = pair_up_assets_and_values(AssetBatch, Vals),
+
+    lists:foreach(fun({A, V}) -> write_asset_price(C, A, V) end, Pairs),
+    fetch_and_write(C, AssetsRest).
+
+pair_up_assets_and_values(_Assets, []) ->
+    [];
+pair_up_assets_and_values(Assets, [#{asset_id := AssetID} = V | T]) ->
+    {value, A} = lists:search(fun(#{id := ID}) -> ID == AssetID end, Assets),
+    [{A, V} | pair_up_assets_and_values(Assets, T)].
+
 -spec write_asset_price(epgsql:connection(), folio_coingeck:asset(), folio_coingecko:fiat_value()) ->
     ok.
 write_asset_price(C, #{id := ID, symbol := S}, #{currency := Cu, amount := A, datetime := DT}) ->
@@ -255,3 +279,9 @@ to_decimal(I) when is_number(I) ->
 to_decimal(F) when is_binary(F) ->
     L = size(F),
     decimal:to_decimal(F, #{precision => L, rounding => round_floor}).
+
+split_list(N, L) ->
+    case length(L) >= N of
+        true -> lists:split(N, L);
+        false -> {L, []}
+    end.

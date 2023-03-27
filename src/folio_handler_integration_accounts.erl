@@ -42,9 +42,59 @@ handle_req(
 
     {ok, C} = fdb:connect(),
     {ok, Accounts} = folio_integration:integration_accounts(C, IntegrationID),
+    AccountsWithFiat = lists:map(
+        fun(Act = #{symbol := Symbol, balance := Bal}) ->
+            case folio_prices:asset_for_symbol(Symbol) of
+                undefined ->
+                    Act;
+                #{external_id := AssetID} ->
+                    {ok, #{amount := Price}} = folio_prices:price_for_asset_id(C, AssetID),
+                    FiatValue = multiply_float_to_float(Price, Bal),
+                    NewAct = Act#{fiat_value => FiatValue},
+                    io:format("account ~p~n", [{Act, Symbol, AssetID, Price, FiatValue, NewAct}]),
+                    NewAct
+            end
+        end,
+        Accounts
+    ),
+
+    FiatValues = lists:filtermap(
+        fun(A) ->
+            case A of
+                #{fiat_value := FV} -> {true, FV};
+                _ -> false
+            end
+        end,
+        AccountsWithFiat
+    ),
+
+    FiatTotal = sum_floats(FiatValues),
+
     fdb:close(C),
 
-    {Req, 200, #{accounts => Accounts}, State}.
+    {Req, 200, #{fiat_total => FiatTotal, accounts => AccountsWithFiat}, State}.
 
 post_req(_Response, _State) ->
     ok.
+
+multiply_float_to_float(ABin, BBin) ->
+    A = to_decimal(ABin),
+    B = to_decimal(BBin),
+    C = decimal:mult(A, B),
+    CBin = decimal:to_binary(C),
+    CBin.
+
+to_decimal(F) when is_binary(F) ->
+    L = size(F),
+    decimal:to_decimal(F, #{precision => L, rounding => round_floor}).
+
+sum_floats(FloatValues) when is_list(FloatValues) ->
+    DecimalTotal = lists:foldl(
+        fun(FVal, Total) ->
+            Val = to_decimal(FVal),
+            decimal:add(Val, Total)
+        end,
+        {0, 0},
+        FloatValues
+    ),
+    decimal:to_binary(DecimalTotal).

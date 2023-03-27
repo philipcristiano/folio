@@ -31,6 +31,7 @@
     sync_asset_prices/0,
     fetch_price_for_symbol/1,
     fetch_and_store_price/1,
+    asset_for_symbol/1,
     price_for_asset_id/1, price_for_asset_id/2
 ]).
 -record(state, {}).
@@ -73,13 +74,24 @@ sync_assets() ->
 sync_asset_prices() ->
     gen_server:cast(?MODULE, sync_asset_prices).
 
+asset_for_symbol(SymBin) when is_binary(SymBin) ->
+    Sym = string:lowercase(SymBin),
+    {ok, C} = fdb:connect(),
+    {ok, Resp} = fdb:select(C, assets, #{symbol => Sym}),
+    fdb:close(C),
+    case Resp of
+        [] -> undefined;
+        [A] -> A;
+        _else -> undefined
+    end.
+
 price_for_asset_id(AID) ->
     {ok, C} = fdb:connect(),
     Resp = price_for_asset_id(C, AID),
     fdb:close(C),
     Resp.
 price_for_asset_id(C, AID) ->
-    {ok, P} = fdb:select(
+    {ok, [P]} = fdb:select(
         C, asset_prices, #{source => "coingecko", external_id => AID, fiat_symbol => <<"usd">>}, [
             {order_by, timestamp, desc}, {limit, 1}
         ]
@@ -247,7 +259,7 @@ write_assets(Assets, State) ->
 fetch_and_write(_C, []) ->
     ok;
 fetch_and_write(C, Assets) ->
-    {AssetBatch, AssetsRest} = split_list(5, Assets),
+    {AssetBatch, AssetsRest} = split_list(10, Assets),
     {ok, Vals} = folio_coingecko:price_for_assets(AssetBatch),
     Pairs = pair_up_assets_and_values(AssetBatch, Vals),
 

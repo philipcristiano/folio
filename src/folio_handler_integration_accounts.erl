@@ -50,7 +50,9 @@ handle_req(
                 #{external_id := AssetID} ->
                     {ok, #{amount := Price}} = folio_prices:price_for_asset_id(C, AssetID),
                     FiatValue = multiply_float_to_float(Price, Bal),
-                    NewAct = Act#{fiat_value => FiatValue},
+                    NewAct = Act#{
+                        fiat_value => decimal_to_presentable_value(to_decimal(FiatValue))
+                    },
                     io:format("account ~p~n", [{Act, Symbol, AssetID, Price, FiatValue, NewAct}]),
                     NewAct
             end
@@ -68,8 +70,8 @@ handle_req(
         AccountsWithFiat
     ),
 
-    FiatTotal = sum_floats(FiatValues),
-
+    FiatTotalDecimal = sum_floats(FiatValues),
+    FiatTotal = decimal_to_presentable_value(FiatTotalDecimal),
     fdb:close(C),
 
     {Req, 200, #{fiat_total => FiatTotal, accounts => AccountsWithFiat}, State}.
@@ -97,4 +99,10 @@ sum_floats(FloatValues) when is_list(FloatValues) ->
         {0, 0},
         FloatValues
     ),
-    decimal:to_binary(DecimalTotal).
+    DecimalTotal.
+
+decimal_to_presentable_value(D) ->
+    F = decimal:to_binary(D, #{pretty => true}),
+    {DotPos, _} = binary:match(F, <<".">>),
+    Length = lists:min([DotPos + 3, size(F)]),
+    binary:part(F, {0, Length}).

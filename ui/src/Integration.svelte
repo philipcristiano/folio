@@ -34,7 +34,7 @@
     {/if}
 
 <div class="justify-center" >
-        Provider: { provider_name } - $ {fiat_total }
+        Provider: { provider_name } - ${ fiat_total }
 
         {#each accounts as integration_account (integration_account.external_id, integration_account.symbol)}
         <div class="max-w-md">

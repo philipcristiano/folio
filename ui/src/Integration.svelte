@@ -6,6 +6,7 @@
   export let provider_name;
   export let accounts = [];
 
+  let fiat_total = "";
   let message = "";
 
 
@@ -16,6 +17,7 @@
     let json = await response.json()
     if (response.ok) {
         accounts = json.accounts;
+        fiat_total = json.fiat_total;
     } else {
         message = json.message;
     };
@@ -32,14 +34,16 @@
     {/if}
 
 <div class="justify-center" >
-        Provider: { provider_name }
+        Provider: { provider_name } - ${ fiat_total }
 
         {#each accounts as integration_account (integration_account.external_id, integration_account.symbol)}
         <div class="max-w-md">
         Symbol: { integration_account.symbol }
         Balance: { integration_account.balance }
+        {#if integration_account.fiat_value }
+        $ {integration_account.fiat_value}
+        {/if}
         </div>
-        <hr />
         {/each}
 
 </div>

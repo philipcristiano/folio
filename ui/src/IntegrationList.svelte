@@ -80,6 +80,7 @@
         <button type="submit" on:click={() => syncIntegration(integration)}>Sync</button>
         <button type="submit" on:click={() => deleteIntegration(integration)}>Delete</button>
     </div>
+    <hr />
     {/each}
 
 

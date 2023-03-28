@@ -3,7 +3,7 @@
 -include_lib("kernel/include/logger.hrl").
 
 -export([connect/0, close/1, schema/0, run/2]).
--export([write/3, select/3, delete/3]).
+-export([write/3, select/3, select/4, delete/3]).
 
 % -type user() :: #{
 %     id := user_id(),
@@ -25,6 +25,30 @@ close(C) ->
 
 schema() ->
     [
+        #{
+            type => table,
+            name => "assets",
+            columns => [
+                #{name => "external_id", type => "text"},
+                #{name => "symbol", type => "text"},
+                #{name => "source", type => "text"},
+                #{name => "name", type => "text"}
+            ],
+            primary_key => ["external_id", "source"]
+        },
+        #{
+            type => table,
+            name => "asset_prices",
+            columns => [
+                #{name => "source", type => "text"},
+                #{name => "symbol", type => "text"},
+                #{name => "external_id", type => "text"},
+                #{name => "amount", type => "numeric"},
+                #{name => "timestamp", type => "timestamp"},
+                #{name => "fiat_symbol", type => "text"}
+            ],
+            primary_key => ["source", "external_id", "symbol", "fiat_symbol", "timestamp"]
+        },
         #{
             type => table,
             name => "integrations",
@@ -188,15 +212,29 @@ write(Conn, Table, Data) when is_map(Data) ->
             {ok, RetMap}
     end.
 
--spec select(epgsql:connection(), atom() | list(), map() | list()) -> {ok, list(map())}.
-select(Conn, Table, Data) when is_atom(Table), is_map(Data) ->
+val_to_operator({'<', V}) -> {" < ", V};
+val_to_operator({'<=', V}) -> {" <= ", V};
+val_to_operator({'>', V}) -> {" > ", V};
+val_to_operator({'>=', V}) -> {" >= ", V};
+val_to_operator(V) -> {" = ", V}.
+
+extra_to_sql({limit, N}) when is_integer(N) ->
+    [" LIMIT ", erlang:integer_to_list(N)];
+extra_to_sql({order_by, Name, asc}) ->
+    [" ORDER BY ", erlang:atom_to_list(Name), " ASC"];
+extra_to_sql({order_by, Name, desc}) ->
+    [" ORDER BY ", erlang:atom_to_list(Name), " DESC"].
+
+-spec select(epgsql:connection(), atom() | list(), map() | list(), list()) -> {ok, list(map())}.
+select(Conn, Table, Data, Extras) when is_atom(Table), is_map(Data) ->
     Fun = fun(K, V, {Count, Statements, Vals}) ->
         FCount = Count + 1,
+        {SQLOperator, Val} = val_to_operator(V),
         Statement = lists:flatten([
-            erlang:atom_to_list(K), " = ", "$", erlang:integer_to_list(FCount)
+            erlang:atom_to_list(K), SQLOperator, "$", erlang:integer_to_list(FCount)
         ]),
         FStatement = Statements ++ [Statement],
-        FVal = Vals ++ [V],
+        FVal = Vals ++ [Val],
         {FCount, FStatement, FVal}
     end,
     {_C, QueryStatements, SQLVals} = maps:fold(Fun, {0, [], []}, Data),
@@ -207,13 +245,20 @@ select(Conn, Table, Data) when is_atom(Table), is_map(Data) ->
             Else -> [" WHERE ", Else]
         end,
 
+    ExtraSQL = lists:map(fun extra_to_sql/1, Extras),
+
     Statement = lists:flatten([
         "SELECT * FROM ",
         erlang:atom_to_list(Table),
         Where,
+        ExtraSQL,
         ";"
     ]),
-    select(Conn, Statement, SQLVals);
+    select(Conn, Statement, SQLVals).
+
+-spec select(epgsql:connection(), atom() | list(), map() | list()) -> {ok, list(map())}.
+select(Conn, Table, Data) when is_atom(Table), is_map(Data) ->
+    select(Conn, Table, Data, []);
 select(Conn, Statement, PositionalValues) when is_list(Statement), is_list(PositionalValues) ->
     case epgsql:equery(Conn, Statement, PositionalValues) of
         {ok, RetCols, RetData} ->

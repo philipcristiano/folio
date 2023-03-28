@@ -19,7 +19,7 @@ jobs:
     uses: "philipcristiano/workflows/.github/workflows/docker-build-push.yml@main"
 
     with:
-      repository: philipcristiano/hvac-iot-mqtt-influx
+      repository: philipcristiano/folio
 
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}

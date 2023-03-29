@@ -91,12 +91,21 @@ price_for_asset_id(AID) ->
     fdb:close(C),
     Resp.
 price_for_asset_id(C, AID) ->
-    {ok, [P]} = fdb:select(
+    Resp = fdb:select(
         C, asset_prices, #{source => "coingecko", external_id => AID, fiat_symbol => <<"usd">>}, [
             {order_by, timestamp, desc}, {limit, 1}
         ]
     ),
-    {ok, P}.
+    case Resp of
+        {ok, [P]} ->
+            {ok, P};
+        {ok, []} ->
+            ?LOG_INFO(#{
+                message => "No price found",
+                asset_id => AID
+            }),
+            undefined
+    end.
 
 fetch_price_for_symbol(Symbol) ->
     {ok, C} = fdb:connect(),

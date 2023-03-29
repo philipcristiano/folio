@@ -5,7 +5,8 @@
     encryption_key/0,
     jwt_key/0,
     environment/0,
-    hosting_port/0
+    hosting_port/0,
+    pg/2
 ]).
 
 domain() ->
@@ -37,3 +38,9 @@ trim_trailing_newline(B) ->
         10 -> binary:part(B, {0, byte_size(B) - 1});
         _ -> B
     end.
+
+pg(host, Default) -> os:getenv("PGHOST", Default);
+pg(port, Default) -> erlang:list_to_integer(os:getenv("PGPORt", Default));
+pg(database, Default) -> os:getenv("PGDATABASE", Default);
+pg(user, Default) -> os:getenv("PGUSER", Default);
+pg(password, Default) -> os:getenv("PGPASSWORD", Default).

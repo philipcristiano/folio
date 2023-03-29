@@ -48,13 +48,7 @@ handle_req(
                 undefined ->
                     Act;
                 #{external_id := AssetID} ->
-                    {ok, #{amount := Price}} = folio_prices:price_for_asset_id(C, AssetID),
-                    FiatValue = multiply_float_to_float(Price, Bal),
-                    NewAct = Act#{
-                        fiat_value => decimal_to_presentable_value(to_decimal(FiatValue))
-                    },
-                    io:format("account ~p~n", [{Act, Symbol, AssetID, Price, FiatValue, NewAct}]),
-                    NewAct
+                    update_account_for_asset_id(C, Act, Bal, AssetID)
             end
         end,
         Accounts
@@ -75,6 +69,18 @@ handle_req(
     fdb:close(C),
 
     {Req, 200, #{fiat_total => FiatTotal, accounts => AccountsWithFiat}, State}.
+
+update_account_for_asset_id(C, Act, Bal, AssetID) ->
+    PriceResp = folio_prices:price_for_asset_id(C, AssetID),
+    update_account_with_asset_price(Act, Bal, PriceResp).
+update_account_with_asset_price(Act, _Bal, undefined) ->
+    Act;
+update_account_with_asset_price(Act, Bal, {ok, #{amount := Price}}) ->
+    FiatValue = multiply_float_to_float(Price, Bal),
+    NewAct = Act#{
+        fiat_value => decimal_to_presentable_value(to_decimal(FiatValue))
+    },
+    NewAct.
 
 post_req(_Response, _State) ->
     ok.

@@ -12,10 +12,11 @@
 
 connect() ->
     {ok, Conn} = epgsql:connect(#{
-        host => "localhost",
-        username => "folio_admin",
-        password => "pass",
-        database => "folio",
+        host => folio_config:pg(host, "localhost"),
+        username => folio_config:pg(user, "folio_admin"),
+        password => folio_config:pg(password, "pass"),
+        database => folio_config:pg(database, "folio"),
+        port => folio_config:pg(port, "5432"),
         timeout => 4000
     }),
     {ok, Conn}.

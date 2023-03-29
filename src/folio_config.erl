@@ -40,7 +40,7 @@ trim_trailing_newline(B) ->
     end.
 
 pg(host, Default) -> os:getenv("PGHOST", Default);
-pg(port, Default) -> erlang:list_to_integer(os:getenv("PGPORt", Default));
+pg(port, Default) -> erlang:list_to_integer(os:getenv("PGPORT", Default));
 pg(database, Default) -> os:getenv("PGDATABASE", Default);
 pg(user, Default) -> os:getenv("PGUSER", Default);
 pg(password, Default) -> os:getenv("PGPASSWORD", Default).

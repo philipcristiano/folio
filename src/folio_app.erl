@@ -9,7 +9,7 @@
 
 start(_Type, _Args) ->
     App = folio,
-    IsLocalDev = application:get_env(App, local_dev, true),
+    IsLocalDev = application:get_env(App, local_dev, false),
 
     % Setup database
     {ok, Conn} = fdb:connect(),

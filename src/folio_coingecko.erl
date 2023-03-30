@@ -50,7 +50,17 @@ price_for_assets(Assets) ->
     Path =
         <<<<"/api/v3/simple/price?vs_currencies=usd&precision=full&include_last_updated_at=true&ids=">>/binary,
             IDsArgs/binary>>,
-    {ok, Data} = request(Path),
+    {_, Data} =
+        case request(Path) of
+            {ok, RespData} ->
+                {ok, RespData};
+            {error, <<"error code: 1020">>} ->
+                ?LOG_ERROR(#{
+                    message => "Price for assets rate limited by Cloudflare",
+                    assets => Assets
+                }),
+                {error, #{}}
+        end,
     DataMaps = price_data_to_maps(Data),
     {ok, DataMaps}.
 
@@ -108,8 +118,10 @@ request(PathQS, Opts = #{attempts_remaining := AR}) ->
             request(PathQS, Opts#{attempts_remaining => AR - 1});
         {ok, _RespCode, _RespHeaders, Body} ->
             case jsx:is_json(Body) of
-                true -> {ok, jsx:decode(Body, [return_maps])};
-                false -> {error, Body}
+                true ->
+                    {ok, jsx:decode(Body, [return_maps])};
+                false ->
+                    {error, Body}
             end
     end.
 

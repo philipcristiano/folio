@@ -66,6 +66,9 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    {ok, _TRef} = start_timer(),
+    sync_assets(),
+    sync_asset_prices(),
     {ok, #state{}}.
 
 sync_assets() ->
@@ -306,3 +309,6 @@ split_list(N, L) ->
         true -> lists:split(N, L);
         false -> {L, []}
     end.
+
+start_timer() ->
+    timer:apply_interval(timer:minutes(51), ?MODULE, sync_asset_prices, []).

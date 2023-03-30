@@ -15,9 +15,8 @@ start(_Type, _Args) ->
     {ok, Conn} = fdb:connect(),
     fdb:run(Conn, fdb:schema()),
 
-    {ok, Pid} = folio_sup:start_link(),
-
     ok = init_folio_modules(),
+    {ok, Pid} = folio_sup:start_link(),
 
     AppRoutes = [],
     StaticRoute = [

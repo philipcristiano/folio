@@ -51,7 +51,7 @@
       })
       let json = await response.json()
       if (response.ok) {
-          message = "account added: " + Name
+          message = "account added: " + integration.Name
       } else {
           message = json.message;
       };

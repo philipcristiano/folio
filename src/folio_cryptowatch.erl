@@ -119,7 +119,9 @@ request(PathQS, Opts = #{attempts_remaining := AR}) ->
         {ok, _RespCode, _RespHeaders, Body} ->
             case jsx:is_json(Body) of
                 true ->
-                    {ok, jsx:decode(Body, [return_maps])};
+                    Data = jsx:decode(Body, [return_maps]),
+                    log_api_info(PathQS, Data),
+                    {ok, Data};
                 false ->
                     {error, Body}
             end
@@ -141,7 +143,27 @@ rate_limit() ->
             rate_limit()
     end.
 
+log_api_info(Path, #{<<"allowance">> := A}) ->
+    Msg = #{
+        message => "cryptowatch_api_allowance",
+        path => Path
+    },
+    Line = maps:merge(Msg, map_keys_to_atoms(A)),
+    ?LOG_INFO(Line);
+log_api_info(_Path, _) ->
+    ok.
+
 time_to_reset(I) when I < 2 ->
     rand:uniform(30);
 time_to_reset(N) ->
     N.
+
+map_keys_to_atoms(M) ->
+    maps:fold(
+        fun(K, V, AccIn) ->
+            Ka = erlang:binary_to_atom(K),
+            AccIn#{Ka => V}
+        end,
+        #{},
+        M
+    ).

@@ -109,7 +109,7 @@ cb_to_account(#{
     <<"currency">> := Currency,
     <<"balance">> := BalanceS
 }) ->
-    Balance = to_decimal(BalanceS),
+    Balance = folio_math:to_decimal(BalanceS),
     #{
         id => SourceID,
         balances => [
@@ -143,7 +143,7 @@ cb_to_txs(
         datetime => qdate:to_date(CreatedAt),
         direction => Direction,
         symbol => Currency,
-        amount => to_decimal(Amount),
+        amount => folio_math:to_decimal(Amount),
         type => undefined,
         description => <<"sell">>
     };
@@ -169,7 +169,7 @@ cb_to_txs(
         datetime => qdate:to_date(CreatedAt),
         direction => Direction,
         symbol => Currency,
-        amount => decimal:abs(to_decimal(Amount)),
+        amount => decimal:abs(folio_math:to_decimal(Amount)),
         type => undefined,
         description => TransferType
     };
@@ -190,7 +190,7 @@ cb_to_txs(
         datetime => qdate:to_date(CreatedAt),
         direction => out,
         symbol => Currency,
-        amount => decimal:abs(to_decimal(Amount)),
+        amount => decimal:abs(folio_math:to_decimal(Amount)),
         type => fee,
         description => <<<<"fee ">>/binary, ProductID/binary>>
     };
@@ -206,7 +206,7 @@ cb_to_txs(
     },
     _State = #{currency := Currency}
 ) ->
-    Amount = to_decimal(AmountF),
+    Amount = folio_math:to_decimal(AmountF),
     AmountABS = decimal:abs(Amount),
     Direction =
         case Amount == AmountABS of
@@ -231,7 +231,7 @@ cb_to_txs(
     },
     _State = #{currency := Currency}
 ) ->
-    Amount = to_decimal(AmountF),
+    Amount = folio_math:to_decimal(AmountF),
     AmountABS = decimal:abs(Amount),
     Direction =
         case Amount == AmountABS of
@@ -329,7 +329,3 @@ time_to_reset(I) when I < 2 ->
     rand:uniform(30);
 time_to_reset(N) ->
     N.
-
-to_decimal(F) when is_binary(F) ->
-    L = size(F),
-    decimal:to_decimal(F, #{precision => L, rounding => round_floor}).

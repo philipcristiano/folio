@@ -71,7 +71,7 @@ parse_market_prices(RawPriceMap) ->
     NewMap = maps:map(
         fun(K, Price) ->
             [Type, Source, Pair] = binary:split(K, <<":">>, [global]),
-            {Type, Source, Pair, to_decimal(Price)}
+            {Type, Source, Pair, folio_math:to_decimal(Price)}
         end,
         RawPriceMap
     ),
@@ -145,9 +145,3 @@ time_to_reset(I) when I < 2 ->
     rand:uniform(30);
 time_to_reset(N) ->
     N.
-
-to_decimal(I) when is_number(I) ->
-    decimal:to_decimal(I, #{precision => 100, rounding => round_floor});
-to_decimal(F) when is_binary(F) ->
-    L = size(F),
-    decimal:to_decimal(F, #{precision => L, rounding => round_floor}).

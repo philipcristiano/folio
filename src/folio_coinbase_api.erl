@@ -93,7 +93,7 @@ cb_to_account(#{
     <<"id">> := SourceID,
     <<"balance">> := #{<<"amount">> := BalanceF, <<"currency">> := SourceSymbol}
 }) ->
-    Balance = to_decimal(BalanceF),
+    Balance = folio_math:to_decimal(BalanceF),
     #{
         id => SourceID,
         balances => [
@@ -177,7 +177,7 @@ cb_to_tx(
         maps:merge(Partial, #{
             datetime => DT,
             source_id => SourceID,
-            amount => decimal:abs(to_decimal(Amount)),
+            amount => decimal:abs(folio_math:to_decimal(Amount)),
             symbol => Symbol,
             type => undefined
         })
@@ -261,7 +261,3 @@ time_to_reset(I) when I < 2 ->
     rand:uniform(30);
 time_to_reset(N) ->
     N.
-
-to_decimal(F) when is_binary(F) ->
-    L = size(F),
-    decimal:to_decimal(F, #{precision => L, rounding => round_floor}).

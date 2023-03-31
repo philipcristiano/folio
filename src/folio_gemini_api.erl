@@ -209,14 +209,14 @@ to_folio_balance(#{
     <<"currency">> := Currency,
     <<"amount">> := BalanceS
 }) ->
-    Balance = to_decimal(BalanceS),
+    Balance = folio_math:to_decimal(BalanceS),
     #{balance => Balance, symbol => Currency};
 to_folio_balance(#{
     <<"type">> := <<"Earn">>,
     <<"currency">> := Currency,
     <<"balance">> := BalanceS
 }) ->
-    Balance = to_decimal(BalanceS),
+    Balance = folio_math:to_decimal(BalanceS),
     #{balance => Balance, symbol => Currency}.
 
 transfers_to_folio_txs(
@@ -236,7 +236,7 @@ transfers_to_folio_txs(
             <<"Withdrawal">> -> out;
             <<"Reward">> -> in
         end,
-    Amount = to_decimal(AmountBin),
+    Amount = folio_math:to_decimal(AmountBin),
 
     ID = erlang:integer_to_binary(IDInt),
     SourceID = <<<<"transfers.">>/binary, ID/binary>>,
@@ -267,8 +267,8 @@ trades_to_folio_txs(
     IDB = erlang:integer_to_binary(ID),
     LeftID = <<IDB/binary, <<".">>/binary, Left/binary>>,
     RightID = <<IDB/binary, <<".">>/binary, Right/binary>>,
-    Amount = to_decimal(AmountBin),
-    Price = to_decimal(PriceBin),
+    Amount = folio_math:to_decimal(AmountBin),
+    Price = folio_math:to_decimal(PriceBin),
 
     RightAmount = decimal:mult(Amount, Price),
 
@@ -316,7 +316,7 @@ earn_to_folio_txs(
         source_id => ID,
         datetime => qdate:to_date(trunc(DT / 1000)),
         symbol => Currency,
-        amount => to_decimal(AmountFloat)
+        amount => folio_math:to_decimal(AmountFloat)
     },
     TypeProps =
         case Type of
@@ -447,9 +447,3 @@ time_to_reset(I) when I < 2 ->
     rand:uniform(30);
 time_to_reset(N) ->
     N.
-
-to_decimal(I) when is_number(I) ->
-    decimal:to_decimal(I, #{precision => 100, rounding => round_floor});
-to_decimal(F) when is_binary(F) ->
-    L = size(F),
-    decimal:to_decimal(F, #{precision => L, rounding => round_floor}).

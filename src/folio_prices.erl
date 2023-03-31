@@ -65,6 +65,8 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     {ok, _TRef} = start_timer(),
+
+    % Only auto-sync things if this is deployed
     sync_assets(),
     sync_asset_prices(),
     {ok, #state{}}.

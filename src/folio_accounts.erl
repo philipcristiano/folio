@@ -1,16 +1,46 @@
 -module(folio_accounts).
 
--export([account_balances/0, account_balances/1, sync_accounts/0]).
+-export([
+    add_fiat_value_for_accounts/2,
+    fiat_value_of_accounts/1
+]).
 
-account_balances() ->
-    {ok, C} = fdb:connect(),
-    account_balances(C).
+add_fiat_value_for_accounts(C, Accounts) ->
+    lists:map(
+        fun(Act = #{symbol := Symbol, balance := Bal}) ->
+            case folio_prices:asset_for_symbol(Symbol) of
+                undefined ->
+                    Act;
+                #{external_id := AssetID} ->
+                    update_account_for_asset_id(C, Act, Bal, AssetID)
+            end
+        end,
+        Accounts
+    ).
 
-account_balances(C) ->
-    Query =
-        "select * from coinbase_accounts as accounts join coinbase_account_balances as balances on accounts.id = balances.account_id WHERE balances.balance > 0 ORDER BY balances.balance DESC",
-    {ok, Accounts} = fdb:select(C, Query, []),
-    {ok, Accounts}.
+fiat_value_of_accounts(Accounts) ->
+    FiatValues = lists:filtermap(
+        fun(A) ->
+            case A of
+                #{fiat_value := FV} -> {true, FV};
+                _ -> false
+            end
+        end,
+        Accounts
+    ),
 
-sync_accounts() ->
-    folio_fetcher:sync().
+    FiatTotalDecimal = folio_math:sum(FiatValues),
+    FiatTotal = folio_math:decimal_to_presentable_value(FiatTotalDecimal),
+    FiatTotal.
+
+update_account_for_asset_id(C, Act, Bal, AssetID) ->
+    PriceResp = folio_prices:price_for_asset_id(C, AssetID),
+    update_account_with_asset_price(Act, Bal, PriceResp).
+update_account_with_asset_price(Act, _Bal, undefined) ->
+    Act;
+update_account_with_asset_price(Act, Bal, {ok, #{amount := Price}}) ->
+    FiatValue = folio_math:multiply(Price, Bal),
+    NewAct = Act#{
+        fiat_value => folio_math:decimal_to_presentable_value(folio_math:to_decimal(FiatValue))
+    },
+    NewAct.

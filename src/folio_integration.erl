@@ -13,7 +13,7 @@
 -export([fetch_integration_accounts/1, fetch_integration_account_transactions/2]).
 
 -export([integrations/0, integrations/1, integration_by_id/2]).
--export([integration_accounts/2]).
+-export([integration_accounts/1, integration_accounts/2]).
 
 -export([transactions/1]).
 
@@ -164,6 +164,13 @@ integrations(C) ->
 integration_by_id(C, ID) ->
     {ok, [I]} = fdb:select(C, integrations, #{id => ID}),
     {ok, I}.
+
+-spec integration_accounts(epgsql:connection()) -> {ok, [account()]}.
+integration_accounts(C) ->
+    Query =
+        "SELECT iab.integration_id as integration_id, iab.symbol as symbol, iab.balance as balance, iab.external_id as external_id FROM integration_account_balances As iab WHERE iab.balance > 0;",
+    {ok, A} = fdb:select(C, Query, []),
+    {ok, A}.
 
 -spec integration_accounts(epgsql:connection(), id()) -> {ok, [account()]}.
 integration_accounts(C, IntegrationID) ->

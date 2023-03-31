@@ -5,9 +5,22 @@
   import Integration from './Integration.svelte';
   import IntegrationSetup from './IntegrationSetup.svelte';
 
+  let balance = "";
   let message = "";
   let address = "";
   let integrations = [];
+
+  async function getBalance() {
+    let response = await fetch("/balance", {
+        method: "GET",
+    });
+    let json = await response.json()
+    if (response.ok) {
+        balance = json.fiat_value;
+    } else {
+        message = json.message;
+    };
+  }
 
   async function getIntegrations() {
     let response = await fetch("/integrations", {
@@ -61,6 +74,7 @@
   }
 
   onMount(() => {
+      getBalance();
       getIntegrations();
   });
 
@@ -70,6 +84,8 @@
     {#if message}
         <div><h2> {message} </h2></div>
     {/if}
+
+    Balance: ${ balance }
 
     <IntegrationSetup />
 

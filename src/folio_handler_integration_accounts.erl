@@ -108,7 +108,8 @@ sum_floats(FloatValues) when is_list(FloatValues) ->
     DecimalTotal.
 
 decimal_to_presentable_value(D) ->
-    F = decimal:to_binary(D, #{pretty => true}),
+    F = decimal:to_binary(D, #{pretty => false}),
     {DotPos, _} = binary:match(F, <<".">>),
     Length = lists:min([DotPos + 3, size(F)]),
-    binary:part(F, {0, Length}).
+    P = binary:part(F, {0, Length}),
+    P.

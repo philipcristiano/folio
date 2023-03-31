@@ -1,10 +1,10 @@
--module(folio_coingecko).
+-module(folio_cryptowatch).
 
 -include_lib("kernel/include/logger.hrl").
 -include_lib("opentelemetry_api/include/otel_tracer.hrl").
 
 -export([folio_init/0]).
--export([get_assets/0, price_for_asset/1, price_for_assets/1]).
+-export([get_assets/0, get_asset_prices/0]).
 
 -export_type([asset_id/0]).
 -type asset_id() :: binary().
@@ -20,64 +20,64 @@
 -type fiat_value() :: #{
     currency := binary(),
     amount := decimal:decimal(),
-    datetime := calendar:datetime(),
-    asset_id := asset_id()
+    symbol := binary()
 }.
 
 folio_init() ->
-    ok = throttle:setup(?MODULE, 1, 15000),
+    ok = throttle:setup(?MODULE, 1, 5000),
     ok.
 
 -spec get_assets() -> {ok, list(asset())}.
 get_assets() ->
-    {ok, Assets} = request(<<"/api/v3/coins/list">>),
+    {ok, #{<<"result">> := Assets}} = request(<<"/assets">>),
     AssetMaps = lists:map(
-        fun(#{<<"id">> := ID, <<"symbol">> := Symbol, <<"name">> := Name}) ->
+        fun(#{<<"sid">> := ID, <<"symbol">> := Symbol, <<"name">> := Name}) ->
             #{id => ID, symbol => Symbol, name => Name}
         end,
         Assets
     ),
     {ok, AssetMaps}.
 
--spec price_for_asset(asset()) -> {ok, fiat_value()}.
-price_for_asset(A) when is_map(A) ->
-    {ok, [Single]} = price_for_assets([A]),
-    {ok, Single}.
+get_asset_prices() ->
+    {ok, #{<<"result">> := RawPriceMap}} = request(<<"/markets/prices">>),
+    PriceData = parse_market_prices(RawPriceMap),
 
-price_for_assets(Assets) ->
-    AssetIDs = lists:map(fun(#{id := ID}) -> ID end, Assets),
-    IDsArgs = binary_join:join(<<",">>, AssetIDs),
-    Path =
-        <<<<"/api/v3/simple/price?vs_currencies=usd&precision=full&include_last_updated_at=true&ids=">>/binary,
-            IDsArgs/binary>>,
-    {_, Data} =
-        case request(Path) of
-            {ok, RespData} ->
-                {ok, RespData};
-            {error, <<"error code: 1020">>} ->
-                ?LOG_ERROR(#{
-                    message => "Price for assets rate limited by Cloudflare",
-                    assets => Assets
-                }),
-                {error, #{}}
+    % Filter Coinbase USD prices
+    FilteredPrices = lists:filter(
+        fun({Type, Market, Pair, _Price}) ->
+            lists:all(fun(Bool) -> Bool end, [
+                Type == <<"market">>,
+                Market == <<"coinbase">>,
+                binary:longest_common_suffix([<<"usd">>, Pair]) == 3
+            ])
         end,
-    DataMaps = price_data_to_maps(Data),
-    {ok, DataMaps}.
+        PriceData
+    ),
 
-price_data_to_maps(Data) ->
-    AssetMap = maps:map(
-        fun(Name, #{<<"usd">> := Amount, <<"last_updated_at">> := Timestamp}) ->
-            DT = qdate:to_date(Timestamp),
+    Prices = lists:map(
+        fun({_, _, Pair, Price}) ->
+            Symbol = binary:part(Pair, 0, size(Pair) - 3),
             #{
                 currency => <<"usd">>,
-                amount => to_decimal(Amount),
-                datetime => DT,
-                asset_id => Name
+                amount => Price,
+                symbol => Symbol
             }
         end,
-        Data
+        FilteredPrices
     ),
-    maps:values(AssetMap).
+    {ok, Prices}.
+
+parse_market_prices(RawPriceMap) ->
+    NewMap = maps:map(
+        fun(K, Price) ->
+            [Type, Source, Pair] = binary:split(K, <<":">>, [global]),
+            {Type, Source, Pair, to_decimal(Price)}
+        end,
+        RawPriceMap
+    ),
+
+    Parsed = maps:values(NewMap),
+    Parsed.
 
 -spec request(binary()) -> {ok, map() | list()} | {error, binary()}.
 request(PathQS) ->
@@ -86,15 +86,15 @@ request(PathQS) ->
 -spec request(binary(), map()) -> {ok, map() | list()} | {error, binary()}.
 request(PathQS, #{attempts_remaining := AR}) when AR =< 0 ->
     ?LOG_INFO(#{
-        message => "CoinGecko request failed",
+        message => "Cryptowatch request failed",
         path => PathQS
     }),
     {error, "No more attemps remaining"};
 request(PathQS, Opts = #{attempts_remaining := AR}) ->
-    BasePath = <<"https://api.coingecko.com">>,
+    BasePath = <<"https://api.cryptowat.ch">>,
     URL = <<BasePath/binary, PathQS/binary>>,
     ?LOG_INFO(#{
-        message => coingecko_request,
+        message => cryptowatch_request,
         url => URL
     }),
     Headers = [
@@ -112,7 +112,7 @@ request(PathQS, Opts = #{attempts_remaining := AR}) ->
             rate_limit(),
             ?LOG_INFO(#{
                 message => rate_limited_by_provider,
-                provider => coingecko,
+                provider => cryptowatch,
                 url => URL
             }),
             request(PathQS, Opts#{attempts_remaining => AR - 1});

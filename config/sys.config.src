@@ -12,7 +12,7 @@
 
  {opentelemetry,
   [
-   {resource, [{service, #{name => "hvac_iot"}}]},
+   {resource, [{service, #{name => "folio"}}]},
    {span_processor, batch},
    {sampler, {otel_sampler_always_on, #{}}},
    {traces_exporter, otlp}

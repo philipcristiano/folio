@@ -106,16 +106,33 @@ accounts_transactions_test() ->
         ]
     }),
 
+    AddressTXURL0 = url_for_path(
+        <<<<"/getAddressTransactions/">>/binary, Addr/binary,
+            <<"?apiKey=freekey&limit=1000">>/binary>>
+    ),
+    AddressTXResp0 = json(
+        [
+            address_tx(
+                100, <<"ethtx1">>, OtherAddress, Addr, 1.1478242782499998
+            ),
+            address_tx(
+                200, <<"ethtx2">>, Addr, OtherAddress, 0.14782
+            )
+        ]
+    ),
+
     ok = meck:expect(
         hackney,
         request,
         [
-            {[get, AddressHistoryURL0, [], [], [with_body]], {ok, 200, [], AddressHistoryResp0}}
+            {[get, AddressHistoryURL0, [], [], [with_body]], {ok, 200, [], AddressHistoryResp0}},
+            {[get, AddressTXURL0, [], [], [with_body]], {ok, 200, [], AddressTXResp0}}
         ]
     ),
 
     {incomplete, [TX1, TX2], State1} = ?MUT:account_transactions(State0),
-    {complete, [], _State2} = ?MUT:account_transactions(State1),
+    {incomplete, [ETHTX1, ETHTX2], State2} = ?MUT:account_transactions(State1),
+    {complete, [], _State3} = ?MUT:account_transactions(State2),
 
     ?assertMatch(
         #{
@@ -142,6 +159,32 @@ accounts_transactions_test() ->
             type := undefined
         },
         TX2
+    ),
+    ?assertMatch(
+        #{
+            amount := {11478242782499999, -16},
+            datetime := {{1970, 1, 1}, {0, 1, 40}},
+            description := <<"">>,
+            direction := in,
+            source_id :=
+                <<"ethtx1">>,
+            symbol := <<"ETH">>,
+            type := undefined
+        },
+        ETHTX1
+    ),
+    ?assertMatch(
+        #{
+            amount := {14782, -5},
+            datetime := {{1970, 1, 1}, {0, 3, 20}},
+            description := <<"">>,
+            direction := out,
+            source_id :=
+                <<"ethtx2">>,
+            symbol := <<"ETH">>,
+            type := undefined
+        },
+        ETHTX2
     ),
 
     folio_meck:unload(?MOCK_MODS).
@@ -200,6 +243,18 @@ transfer(Timestamp, TXHash, TokenInfo, From, To, Value) ->
         <<"value">> => Value,
         <<"from">> => string:lowercase(From),
         <<"to">> => string:lowercase(To)
+    }.
+
+address_tx(Timestamp, TXHash, From, To, Value) ->
+    #{
+        <<"timestamp">> => Timestamp,
+        <<"from">> => From,
+        <<"to">> => To,
+        <<"hash">> => TXHash,
+        <<"value">> => Value,
+        <<"usdPrice">> => 1538.33999999,
+        <<"usdValue">> => 5150.24583420,
+        <<"success">> => true
     }.
 
 token_info(lrc) ->

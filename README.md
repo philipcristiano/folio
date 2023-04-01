@@ -30,4 +30,6 @@ sh ./db_init.sh
 * Coinbase Pro
 * Gemini
 * Bitcoin addresses, x/y pub (no bech3/bc1 addresses yet).
-* Ethereum and ERC20 tokens (no transaction support yet, only balances).
+* Ethereum and ERC20 tokens
+  * Up to 1000 ERC20 token transactions
+  * No ETH transactions

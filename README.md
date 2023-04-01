@@ -32,4 +32,4 @@ sh ./db_init.sh
 * Bitcoin addresses, x/y pub (no bech3/bc1 addresses yet).
 * Ethereum and ERC20 tokens
   * Up to 1000 ERC20 token transactions
-  * No ETH transactions
+  * Up to 1000 ETH transactions

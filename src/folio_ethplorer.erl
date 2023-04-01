@@ -91,6 +91,9 @@ account_transactions_init(#{id := IntegrationID}, #{id := AccountID}) ->
         to_sync => [
             #{
                 type => get_address_history
+            },
+            #{
+                type => get_address_tx
             }
         ]
     },
@@ -110,6 +113,22 @@ account_transactions(
             op_to_txs(Addr, Op)
         end,
         Ops
+    ),
+    TXs = lists:flatten(TXLists),
+
+    {incomplete, TXs, State#{to_sync => RestToSync}};
+account_transactions(
+    State = #{
+        address := Addr, to_sync := [#{type := get_address_tx} | RestToSync]
+    }
+) ->
+    {ok, APITXs} = request_address_transactions(Addr),
+
+    TXLists = lists:map(
+        fun(Op) ->
+            api_tx_to_txs(Addr, Op)
+        end,
+        APITXs
     ),
     TXs = lists:flatten(TXLists),
 
@@ -142,6 +161,31 @@ op_to_txs(Addr, #{
         }
     ].
 
+api_tx_to_txs(Addr, #{
+    <<"timestamp">> := Timestamp,
+    <<"hash">> := TXHash,
+    <<"value">> := Value,
+    <<"from">> := From,
+    <<"to">> := _To
+}) ->
+    DValue = folio_math:to_decimal(Value),
+    Direction =
+        case string:lowercase(Addr) == From of
+            true -> out;
+            false -> in
+        end,
+    [
+        #{
+            source_id => TXHash,
+            datetime => qdate:to_date(Timestamp),
+            direction => Direction,
+            symbol => <<"ETH">>,
+            amount => DValue,
+            type => undefined,
+            description => <<"">>
+        }
+    ].
+
 request_balance(Address) when is_binary(Address) ->
     Path = <<<<"/getAddressInfo/">>/binary, Address/binary, <<"?apiKey=freekey">>/binary>>,
     {ok, D} = request(Path),
@@ -150,6 +194,13 @@ request_balance(Address) when is_binary(Address) ->
 request_address_history(Address) ->
     Path =
         <<<<"/getAddressHistory/">>/binary, Address/binary,
+            <<"?apiKey=freekey&limit=1000">>/binary>>,
+    {ok, D} = request(Path),
+    {ok, D}.
+
+request_address_transactions(Address) ->
+    Path =
+        <<<<"/getAddressTransactions/">>/binary, Address/binary,
             <<"?apiKey=freekey&limit=1000">>/binary>>,
     {ok, D} = request(Path),
     {ok, D}.

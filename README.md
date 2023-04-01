@@ -15,7 +15,6 @@ make services
 sh ./db_init.sh
 ```
 
-
 ## Model
 
 `provider` - A source of information, the implementation for integrations but not setup. Something like "coinbase" or "bitcoin chain".
@@ -24,3 +23,11 @@ sh ./db_init.sh
 
 `account` - a collection of balances and transactions. Multiple accounts may come from an integration.
 
+
+## Providers
+
+* Coinbase
+* Coinbase Pro
+* Gemini
+* Bitcoin addresses, x/y pub (no bech3/bc1 addresses yet).
+* Ethereum and ERC20 tokens (no transaction support yet, only balances).

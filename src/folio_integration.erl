@@ -104,6 +104,11 @@ providers() ->
             name => <<"gemini">>,
             type => exchange,
             mod => folio_gemini_api
+        },
+        #{
+            name => <<"ethereum">>,
+            type => chain,
+            mod => folio_ethplorer
         }
     ].
 

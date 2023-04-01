@@ -1,6 +1,6 @@
 -module(folio_math).
 
--export([to_decimal/1, multiply/2, sum/1]).
+-export([to_decimal/1, multiply/2, divide/2, sum/1]).
 
 -export([decimal_to_presentable_value/1]).
 
@@ -15,7 +15,12 @@ multiply(ABin, BBin) when is_binary(ABin) and is_binary(BBin) ->
     B = to_decimal(BBin),
     C = decimal:mult(A, B),
     CBin = decimal:to_binary(C),
-    CBin.
+    CBin;
+multiply(A, B) ->
+    decimal:mult(A, B).
+
+divide(A, B) ->
+    decimal:divide(A, B, #{precision => 100, rounding => round_floor}).
 
 sum(FloatValues) when is_list(FloatValues) ->
     DecimalTotal = lists:foldl(

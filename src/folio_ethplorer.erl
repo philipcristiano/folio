@@ -58,7 +58,7 @@ accounts(State = #{address := Addr}) ->
                 <<"rawBalance">> := TokenRawBalance
             }
         ) ->
-            to_balance(Symbol, TokenRawBalance, erlang:binary_to_integer(Decimals))
+            to_balance(Symbol, TokenRawBalance, Decimals)
         end,
         Tokens
     ),
@@ -68,27 +68,88 @@ accounts(State = #{address := Addr}) ->
     {complete, Accounts, State}.
 
 to_balance(Symbol, RawBalance, Decimal) ->
-    NativeBalance = folio_math:to_decimal(RawBalance),
-    Balance = folio_math:divide(NativeBalance, {1, Decimal}),
+    Balance = to_value(RawBalance, Decimal),
     #{
         balance => Balance,
         symbol => Symbol
     }.
+to_value(RawBalance, DecimalBin) when is_binary(DecimalBin) ->
+    Decimal = erlang:binary_to_integer(DecimalBin),
+    to_value(RawBalance, Decimal);
+to_value(RawBalance, Decimal) ->
+    NativeBalance = folio_math:to_decimal(RawBalance),
+    Balance = folio_math:divide(NativeBalance, {1, Decimal}),
+    Balance.
 
 account_transactions_init(#{id := IntegrationID}, #{id := AccountID}) ->
     % #{address := Addr} = folio_credentials_store:get_credentials(IntegrationID),
     State = #{
         account_id => AccountID,
         address => AccountID,
-        integration_id => IntegrationID
+        integration_id => IntegrationID,
+        to_sync => [
+            #{
+                type => get_address_history
+            }
+        ]
     },
     State.
 
-account_transactions(State) ->
-    {complete, [], State}.
+account_transactions(State = #{to_sync := []}) ->
+    {complete, [], State};
+account_transactions(
+    State = #{
+        address := Addr, to_sync := [#{type := get_address_history} | RestToSync]
+    }
+) ->
+    {ok, #{<<"operations">> := Ops}} = request_address_history(Addr),
+
+    TXLists = lists:map(
+        fun(Op) ->
+            op_to_txs(Addr, Op)
+        end,
+        Ops
+    ),
+    TXs = lists:flatten(TXLists),
+
+    {incomplete, TXs, State#{to_sync => RestToSync}}.
+
+op_to_txs(Addr, #{
+    <<"timestamp">> := Timestamp,
+    <<"transactionHash">> := TXHash,
+    <<"tokenInfo">> := #{<<"symbol">> := Symbol, <<"decimals">> := Decimals},
+    <<"type">> := <<"transfer">> = Type,
+    <<"value">> := Value,
+    <<"from">> := From,
+    <<"to">> := _To
+}) ->
+    DValue = to_value(Value, Decimals),
+    Direction =
+        case string:lowercase(Addr) == From of
+            true -> out;
+            false -> in
+        end,
+    [
+        #{
+            source_id => TXHash,
+            datetime => qdate:to_date(Timestamp),
+            direction => Direction,
+            symbol => Symbol,
+            amount => DValue,
+            type => undefined,
+            description => Type
+        }
+    ].
 
 request_balance(Address) when is_binary(Address) ->
     Path = <<<<"/getAddressInfo/">>/binary, Address/binary, <<"?apiKey=freekey">>/binary>>,
+    {ok, D} = request(Path),
+    {ok, D}.
+
+request_address_history(Address) ->
+    Path =
+        <<<<"/getAddressHistory/">>/binary, Address/binary,
+            <<"?apiKey=freekey&limit=1000">>/binary>>,
     {ok, D} = request(Path),
     {ok, D}.
 

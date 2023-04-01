@@ -43,6 +43,72 @@ accounts_address_test() ->
 
     folio_meck:unload(?MOCK_MODS).
 
+accounts_transactions_test() ->
+    load(),
+
+    IntegrationID = make_ref(),
+    Integration = #{id => IntegrationID},
+    Addr = <<"test_ethereum_address">>,
+    OtherAddress = <<"other_ethereum_address">>,
+    AccountID = Addr,
+
+    Account = #{id => AccountID},
+
+    ok = expect_credentials(Addr),
+
+    State0 = ?MUT:account_transactions_init(Integration, Account),
+    AddressHistoryURL0 = url_for_path(
+        <<<<"/getAddressHistory/">>/binary, Addr/binary, <<"?apiKey=freekey&limit=1000">>/binary>>
+    ),
+    AddressHistoryResp0 = json(#{
+        operations => [
+            transfer(
+                100, <<"tx1">>, token_info(lrc), OtherAddress, Addr, <<"2000000000000000000">>
+            ),
+            transfer(200, <<"tx2">>, token_info(lrc), Addr, OtherAddress, <<"1000000000000000000">>)
+        ]
+    }),
+
+    ok = meck:expect(
+        hackney,
+        request,
+        [
+            {[get, AddressHistoryURL0, [], [], [with_body]], {ok, 200, [], AddressHistoryResp0}}
+        ]
+    ),
+
+    {incomplete, [TX1, TX2], State1} = ?MUT:account_transactions(State0),
+    {complete, [], _State2} = ?MUT:account_transactions(State1),
+
+    ?assertMatch(
+        #{
+            amount := {2, 0},
+            datetime := {{1970, 1, 1}, {0, 1, 40}},
+            description := <<"transfer">>,
+            direction := in,
+            source_id :=
+                <<"tx1">>,
+            symbol := <<"LRC">>,
+            type := undefined
+        },
+        TX1
+    ),
+    ?assertMatch(
+        #{
+            amount := {1, 0},
+            datetime := {{1970, 1, 1}, {0, 3, 20}},
+            description := <<"transfer">>,
+            direction := out,
+            source_id :=
+                <<"tx2">>,
+            symbol := <<"LRC">>,
+            type := undefined
+        },
+        TX2
+    ),
+
+    folio_meck:unload(?MOCK_MODS).
+
 url_for_path(P) ->
     BasePath = <<"https://api.ethplorer.io">>,
     <<BasePath/binary, P/binary>>.
@@ -66,7 +132,7 @@ addr_resp() ->
         % exists if the specified address has any token balances
         <<"tokens">> => [
             #{
-                <<"tokenInfo">> => #{<<"symbol">> => <<"LRC">>, <<"decimals">> => <<"18">>},
+                <<"tokenInfo">> => token_info(lrc),
                 <<"rawBalance">> => <<"22106687119580000000000">>
             }
         ]
@@ -78,3 +144,17 @@ expect_credentials(M) when is_map(M) ->
 expect_credentials(Addr) when is_binary(Addr) ->
     ok = meck:expect(folio_credentials_store, get_credentials, ['_'], #{address => Addr}),
     ok.
+
+transfer(Timestamp, TXHash, TokenInfo, From, To, Value) ->
+    #{
+        <<"timestamp">> => Timestamp,
+        <<"transactionHash">> => TXHash,
+        <<"tokenInfo">> => TokenInfo,
+        <<"type">> => <<"transfer">>,
+        <<"value">> => Value,
+        <<"from">> => string:lowercase(From),
+        <<"to">> => string:lowercase(To)
+    }.
+
+token_info(lrc) ->
+    #{<<"symbol">> => <<"LRC">>, <<"decimals">> => <<"18">>}.

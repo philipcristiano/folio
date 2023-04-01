@@ -42,12 +42,13 @@ accounts_init_by_credentials(_Integration = #{id := IntegrationID}, #{address :=
     }.
 
 accounts(State = #{address := Addr}) ->
-    {ok, #{
-        <<"ETH">> := #{
-            <<"rawBalance">> := EthRawBalance
-        },
-        <<"tokens">> := Tokens
-    }} = request_balance(Addr),
+    {ok,
+        #{
+            <<"ETH">> := #{
+                <<"rawBalance">> := EthRawBalance
+            }
+        } = Resp} = request_balance(Addr),
+    Tokens = maps:get(<<"tokens">>, Resp, []),
 
     EthBalance = to_balance(<<"ETH">>, EthRawBalance, 18),
 

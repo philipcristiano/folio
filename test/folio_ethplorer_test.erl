@@ -43,6 +43,43 @@ accounts_address_test() ->
 
     folio_meck:unload(?MOCK_MODS).
 
+empty_accounts_address_test() ->
+    load(),
+
+    IntegrationID = make_ref(),
+    Integration = #{id => IntegrationID},
+    Addr = <<"test_eth_address">>,
+
+    ok = expect_credentials(Addr),
+
+    State0 = ?MUT:accounts_init(Integration),
+
+    URL = url_for_path(
+        <<<<"/getAddressInfo/">>/binary, Addr/binary, <<"?apiKey=freekey">>/binary>>
+    ),
+    io:format("URL ~p~n", [URL]),
+    BodyResp = empty_addr_resp(),
+    ok = meck:expect(
+        hackney,
+        request,
+        [get, URL, [], [], [with_body]],
+        {ok, 200, [], BodyResp}
+    ),
+
+    {complete, [Acct], _State1} = ?MUT:accounts(State0),
+
+    ?assertMatch(
+        #{
+            balances := [
+                #{balance := {0, 0}, symbol := <<"ETH">>}
+            ],
+            id := Addr
+        },
+        Acct
+    ),
+
+    folio_meck:unload(?MOCK_MODS).
+
 accounts_transactions_test() ->
     load(),
 
@@ -121,6 +158,15 @@ load() ->
     folio_meck:load(?MOCK_MODS),
     ok = meck:expect(throttle, check, ['_', '_'], {ok, 1, 1}),
     ok.
+
+empty_addr_resp() ->
+    json(#{
+        % ETH specific information,
+        <<"ETH">> => #{
+            % balance in wei, as a string,
+            <<"rawBalance">> => <<"0">>
+        }
+    }).
 
 addr_resp() ->
     json(#{

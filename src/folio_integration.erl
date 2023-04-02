@@ -109,6 +109,11 @@ providers() ->
             name => <<"ethereum">>,
             type => chain,
             mod => folio_ethplorer
+        },
+        #{
+            name => <<"loopring">>,
+            type => chain,
+            mod => folio_loopring
         }
     ].
 

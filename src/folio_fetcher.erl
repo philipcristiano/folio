@@ -59,6 +59,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    {ok, _TRef} = start_timer(),
     {ok, #state{}}.
 
 sync() ->
@@ -257,3 +258,6 @@ write_account_transactions(#{id := IntegrationID}, _Account = #{id := AccountID}
     ),
     fdb:close(C),
     ok.
+
+start_timer() ->
+    timer:apply_interval(timer:minutes(181), ?MODULE, sync, []).

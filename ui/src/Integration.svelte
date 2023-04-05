@@ -38,8 +38,8 @@
 
         {#each accounts as integration_account (integration_account.external_id, integration_account.symbol)}
         <div class="max-w-md">
-        Symbol: { integration_account.symbol }
-        Balance: { integration_account.balance }
+        { integration_account.symbol }
+        { integration_account.balance }
         {#if integration_account.fiat_value }
         $ {integration_account.fiat_value}
         {/if}

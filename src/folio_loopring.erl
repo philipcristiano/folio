@@ -57,7 +57,7 @@ accounts(State = #{account_id := AccountID}) ->
     {ok, APIBalances} = request_account_balance(AccountID, State),
 
     ?LOG_INFO(#{
-        message => loopring_Balances,
+        message => loopring_balances,
         balances => APIBalances
     }),
 
@@ -99,64 +99,93 @@ to_value(RawBalance, Decimal) ->
 account_transactions_init(#{id := IntegrationID}, #{id := AccountID}) ->
     State = #{
         account_id => AccountID,
-        integration_id => IntegrationID
+        integration_id => IntegrationID,
+        tokens => undefined,
+        to_sync => [
+            #{
+                type => transfers,
+                start => 0
+            }
+        ]
     },
     State.
 
-account_transactions(State) ->
-    {complete, [], State}.
+account_transactions(State = #{to_sync := []}) ->
+    {complete, [], State};
+account_transactions(State = #{tokens := undefined}) ->
+    {ok, TokenList} = request_token_list(),
 
-%op_to_txs(Addr, #{
-%    <<"timestamp">> := Timestamp,
-%    <<"transactionHash">> := TXHash,
-%    <<"tokenInfo">> := #{<<"symbol">> := Symbol, <<"decimals">> := Decimals},
-%    <<"type">> := <<"transfer">> = Type,
-%    <<"value">> := Value,
-%    <<"from">> := From,
-%    <<"to">> := _To
-%}) ->
-%    DValue = to_value(Value, Decimals),
-%    Direction =
-%        case string:lowercase(Addr) == From of
-%            true -> out;
-%            false -> in
-%        end,
-%    [
-%        #{
-%            source_id => TXHash,
-%            datetime => qdate:to_date(Timestamp),
-%            direction => Direction,
-%            symbol => Symbol,
-%            amount => DValue,
-%            type => undefined,
-%            description => Type
-%        }
-%    ].
-%
-%api_tx_to_txs(Addr, #{
-%    <<"timestamp">> := Timestamp,
-%    <<"hash">> := TXHash,
-%    <<"value">> := Value,
-%    <<"from">> := From,
-%    <<"to">> := _To
-%}) ->
-%    DValue = folio_math:to_decimal(Value),
-%    Direction =
-%        case string:lowercase(Addr) == From of
-%            true -> out;
-%            false -> in
-%        end,
-%    [
-%        #{
-%            source_id => TXHash,
-%            datetime => qdate:to_date(Timestamp),
-%            direction => Direction,
-%            symbol => <<"ETH">>,
-%            amount => DValue,
-%            type => undefined,
-%            description => <<"">>
-%        }
-%    ].
+    ?LOG_INFO(#{
+        message => loopring_tokens,
+        tokens => TokenList
+    }),
+    TokenMap = lists:foldl(
+        fun(T = #{<<"tokenId">> := TID}, M) ->
+            M#{TID => T}
+        end,
+        #{},
+        TokenList
+    ),
+
+    {incomplete, [], State#{tokens => TokenMap}};
+account_transactions(
+    State = #{
+        account_id := AccountID, to_sync := [#{type := transfers, start := Start} | RestToSync]
+    }
+) ->
+    {ok, APITransfers} = request_account_transfers(AccountID, Start, State),
+
+    ?LOG_INFO(#{
+        message => loopring_transfers,
+        balances => APITransfers
+    }),
+    TXLists = transfers_to_txs(APITransfers, State),
+    TXs = lists:flatten(TXLists),
+
+    {incomplete, TXs, State#{to_sync => RestToSync}}.
+
+transfers_to_txs(
+    #{<<"transactions">> := Transfers}, _State = #{account_id := AccountID, tokens := TokenMap}
+) ->
+    lists:map(
+        fun(Transfer) ->
+            transfer_to_txs(Transfer, AccountID, TokenMap)
+        end,
+        Transfers
+    ).
+
+transfer_to_txs(
+    #{
+        <<"timestamp">> := TimestampMS,
+        <<"receiver">> := ReceivingAccountID,
+        <<"hash">> := TXHash,
+        <<"symbol">> := Symbol,
+        <<"amount">> := Value,
+        <<"memo">> := Description,
+        <<"storageInfo">> := #{<<"tokenId">> := TokenID}
+    },
+    AccountID,
+    TokenMap
+) ->
+    #{<<"decimals">> := Decimals} = maps:get(TokenID, TokenMap),
+    Amount = to_value(Value, Decimals),
+    io:format("Account ID ~p~n", [{ReceivingAccountID, AccountID}]),
+    Direction =
+        case erlang:binary_to_integer(AccountID) == ReceivingAccountID of
+            true -> in;
+            false -> out
+        end,
+    [
+        #{
+            source_id => TXHash,
+            datetime => qdate:to_date(trunc(TimestampMS / 1000)),
+            direction => Direction,
+            symbol => Symbol,
+            amount => Amount,
+            type => undefined,
+            description => Description
+        }
+    ].
 
 request_token_list() ->
     Path = <<"/api/v3/exchange/tokens">>,
@@ -164,6 +193,12 @@ request_token_list() ->
 
 request_account_balance(AccountID, State) ->
     Path = <<<<"/api/v3/user/balances?accountId=">>/binary, AccountID/binary>>,
+    request(Path, State).
+
+request_account_transfers(AccountID, _StartInt, State) ->
+    %Start = erlang:integer_to_binary(StartInt),
+    Path =
+        <<<<"/api/v3/user/transfers?accountId=">>/binary, AccountID/binary>>,
 
     request(Path, State).
 

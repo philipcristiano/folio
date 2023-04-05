@@ -33,3 +33,6 @@ sh ./db_init.sh
 * Ethereum and ERC20 tokens
   * Up to 1000 ERC20 token transactions
   * Up to 1000 ETH transactions
+* Loopring
+  * Balances
+  * Transfers in the last ~90 days.

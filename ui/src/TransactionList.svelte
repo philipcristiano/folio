@@ -1,6 +1,7 @@
 <script lang="ts">
 
   import { onMount } from 'svelte';
+  import Time from "svelte-time";
 
   let message = "";
   let transactions = [];
@@ -23,13 +24,12 @@
 
 </script>
 
-<div class="max-w-md border-black ">
+<div class="flex border-black ">
         {#if message}
             <div><h2> {message} </h2></div>
         {/if}
 
     <div class="max-w-md">
-        <div>Transactions:</div>
         <table class="w-full border-collapse bg-white text-left text-sm">
         <thead class="bg-gray-50">
             <tr>
@@ -45,7 +45,7 @@
         <tbody>
         {#each transactions as tx}
         <tr>
-            <td>{tx.timestamp}</td>
+            <td><Time relative timestamp="{tx.timestamp}"/></td>
             <td>{tx.provider_name}</td>
             <td>{tx.symbol}</td>
             <td>{tx.direction}</td>

@@ -1,6 +1,7 @@
 <script lang="ts">
 
   import { onMount } from 'svelte';
+  import Button from './Button.svelte';
 
   import Integration from './Integration.svelte';
   import IntegrationSetup from './IntegrationSetup.svelte';
@@ -80,7 +81,7 @@
 
 </script>
 
-<div class="max-w-sm border-black border-indigo-900 shadow-lg">
+<div class="max-w-sm border-grey shadow-lg border-3">
     {#if message}
         <div><h2> {message} </h2></div>
     {/if}
@@ -91,12 +92,11 @@
 
     Current installed integrations:
     {#each integrations as integration (integration.id)}
-    <div class="max-w-md">
+    <div class="border-grey max-w-sm shadow-lg border-1">
         <Integration {...integration} />
-        <button type="submit" on:click={() => syncIntegration(integration)}>Sync</button>
-        <button type="submit" on:click={() => deleteIntegration(integration)}>Delete</button>
+        <Button on:click={() => syncIntegration(integration)}>Sync</Button>
+        <Button on:click={() => deleteIntegration(integration)}>Delete</Button>
     </div>
-    <hr />
     {/each}
 
 

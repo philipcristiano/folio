@@ -1,6 +1,7 @@
 <script lang="ts">
 
   import { onMount } from 'svelte';
+  import Button from './Button.svelte';
 
   import Integration from './Integration.svelte';
   import IntegrationSetup from './IntegrationSetup.svelte';
@@ -93,8 +94,8 @@
     {#each integrations as integration (integration.id)}
     <div class="max-w-md">
         <Integration {...integration} />
-        <button type="submit" on:click={() => syncIntegration(integration)}>Sync</button>
-        <button type="submit" on:click={() => deleteIntegration(integration)}>Delete</button>
+        <Button on:click={() => syncIntegration(integration)}>Sync</Button>
+        <Button on:click={() => deleteIntegration(integration)}>Delete</Button>
     </div>
     <hr />
     {/each}

@@ -1,6 +1,7 @@
 <script lang="ts">
 
   import { onMount } from 'svelte';
+  import Button from './Button.svelte';
 
   let message = "";
 
@@ -99,7 +100,7 @@ Add Integration:
           {/if}
 
     </div>{/each}</div>
-        <div> <button type="submit" on:click={() => setupIntegration(addableIntegration)}>Add</button></div>
+        <div> <Button on:click={() => setupIntegration(addableIntegration)}>Add</Button></div>
 </div>
 <hr>
 {/each}

@@ -169,7 +169,6 @@ transfer_to_txs(
 ) ->
     #{<<"decimals">> := Decimals} = maps:get(TokenID, TokenMap),
     Amount = to_value(Value, Decimals),
-    io:format("Account ID ~p~n", [{ReceivingAccountID, AccountID}]),
     Direction =
         case erlang:binary_to_integer(AccountID) == ReceivingAccountID of
             true -> in;

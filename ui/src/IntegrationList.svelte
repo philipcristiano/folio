@@ -81,7 +81,7 @@
 
 </script>
 
-<div class="max-w-sm border-black border-indigo-900 shadow-lg">
+<div class="max-w-sm border-grey shadow-lg border-3">
     {#if message}
         <div><h2> {message} </h2></div>
     {/if}
@@ -92,12 +92,11 @@
 
     Current installed integrations:
     {#each integrations as integration (integration.id)}
-    <div class="max-w-md">
+    <div class="border-grey max-w-sm shadow-lg border-1">
         <Integration {...integration} />
         <Button on:click={() => syncIntegration(integration)}>Sync</Button>
         <Button on:click={() => deleteIntegration(integration)}>Delete</Button>
     </div>
-    <hr />
     {/each}
 
 

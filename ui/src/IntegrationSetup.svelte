@@ -69,6 +69,7 @@
     <div><h2> {message} </h2></div>
 {/if}
 
+<div class="border-grey max-w-sm border-2">
 <div class="max-w-sm">
 Add Integration:
     <select bind:value={selected_add_integration} on:change="{() => getIntegrationSetup(selected_add_integration)}">
@@ -80,9 +81,8 @@ Add Integration:
 	</select>
 </div>
 
-<div class="max-w-md">
 {#each integration_setups as addableIntegration }
-<div class="border-black">
+<div class="border-grey max-w-sm border-2">
     <div> Name: { addableIntegration.name } </div>
     <div>{#each addableIntegration.input_fields as field }<div>
 
@@ -104,5 +104,4 @@ Add Integration:
 </div>
 <hr>
 {/each}
-
 </div>

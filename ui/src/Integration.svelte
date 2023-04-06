@@ -34,16 +34,18 @@
     {/if}
 
 <div class="justify-center" >
-        Provider: { provider_name } - ${ fiat_total }
+        <p class="text-lg">
+        Provider: { provider_name } : ${ fiat_total }
+        </p>
 
         {#each accounts as integration_account (integration_account.external_id, integration_account.symbol)}
-        <div class="max-w-md">
+        <p class="text-base">
         { integration_account.symbol }
         { integration_account.balance }
         {#if integration_account.fiat_value }
         $ {integration_account.fiat_value}
         {/if}
-        </div>
+        </p>
         {/each}
 
 </div>

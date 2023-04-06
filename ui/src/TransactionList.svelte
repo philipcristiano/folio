@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import Time from "svelte-time";
 
+  import BoxContent from './BoxContent.svelte';
   let message = "";
   let transactions = [];
 
@@ -24,22 +25,21 @@
 
 </script>
 
-<div class="flex border-black ">
+<BoxContent>
         {#if message}
             <div><h2> {message} </h2></div>
         {/if}
 
-    <div class="max-w-md">
-        <table class="w-full border-collapse bg-white text-left text-sm">
+        <table class="border-collapse bg-white text-left text-sm">
         <thead class="bg-gray-50">
             <tr>
-              <th scope="col" class="px-6 py-4 font-medium text-gray-900">Datetime</th>
-              <th scope="col" class="px-6 py-4 font-medium text-gray-900">Provider</th>
-              <th scope="col" class="px-6 py-4 font-medium text-gray-900">Symbol</th>
-              <th scope="col" class="px-6 py-4 font-medium text-gray-900">Direction</th>
-              <th scope="col" class="px-6 py-4 font-medium text-gray-900">Amount</th>
-              <th scope="col" class="px-6 py-4 font-medium text-gray-900">Description</th>
-              <th scope="col" class="px-6 py-4 font-medium text-gray-900">Account ID</th>
+              <th scope="col" class="px-6 py-2 font-medium text-gray-900">Datetime</th>
+              <th scope="col" class="px-6 py-2 font-medium text-gray-900">Provider</th>
+              <th scope="col" class="px-6 py-2 font-medium text-gray-900">Symbol</th>
+              <th scope="col" class="px-6 py-2 font-medium text-gray-900">Direction</th>
+              <th scope="col" class="px-6 py-2 font-medium text-gray-900">Amount</th>
+              <th scope="col" class="px-6 py-2 font-medium text-gray-900">Description</th>
+              <th scope="col" class="px-6 py-2 font-medium text-gray-900">Account ID</th>
             </tr>
         </thead>
         <tbody>
@@ -57,6 +57,5 @@
 
         </table>
 
-    </div>
 
-</div>
+</BoxContent>

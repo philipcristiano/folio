@@ -85,8 +85,9 @@
     <div><h2> {message} </h2></div>
 {/if}
 
-<p> Balance: ${ balance }</p>
-<p>Current installed integrations:</p>
+<div class="border-grey max-w-sm shadow-lg border-1 p-5">
+  <p> Balance: ${ balance }</p>
+  <p>Current installed integrations:</p>
 {#each integrations as integration (integration.id)}
 <div class="border-grey max-w-sm shadow-lg border-1 p-5">
     <Integration {...integration} />
@@ -96,3 +97,4 @@
 {/each}
 
 <IntegrationSetup />
+</div>

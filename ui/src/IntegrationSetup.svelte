@@ -65,12 +65,13 @@
 
 </script>
 
+<div class="border-grey max-w-sm border-2">
+<div class="max-w-sm">
+
 {#if message}
     <div><h2> {message} </h2></div>
 {/if}
 
-<div class="border-grey max-w-sm border-2">
-<div class="max-w-sm">
 Add Integration:
     <select bind:value={selected_add_integration} on:change="{() => getIntegrationSetup(selected_add_integration)}">
         {#each integration_names as addableIntegrationName }

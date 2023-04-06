@@ -82,7 +82,7 @@ Add Integration:
 </div>
 
 {#each integration_setups as addableIntegration }
-<div class="border-grey max-w-sm border-2">
+<div class="border-black">
     <div> Name: { addableIntegration.name } </div>
     <div>{#each addableIntegration.input_fields as field }<div>
 

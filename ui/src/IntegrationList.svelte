@@ -2,6 +2,7 @@
 
   import { onMount } from 'svelte';
   import Button from './Button.svelte';
+  import BoxSidebar from './BoxSidebar.svelte';
 
   import Integration from './Integration.svelte';
   import IntegrationSetup from './IntegrationSetup.svelte';
@@ -81,23 +82,22 @@
 
 </script>
 
+<BoxSidebar>
 <div class="max-w-sm border-grey shadow-lg border-3">
     {#if message}
         <div><h2> {message} </h2></div>
     {/if}
 
-    Balance: ${ balance }
-
-    <IntegrationSetup />
-
-    Current installed integrations:
+    <p> Balance: ${ balance }</p>
+    <p>Current installed integrations:</p>
     {#each integrations as integration (integration.id)}
-    <div class="border-grey max-w-sm shadow-lg border-1">
+    <div class="border-grey max-w-sm shadow-lg border-1 p-5">
         <Integration {...integration} />
         <Button on:click={() => syncIntegration(integration)}>Sync</Button>
         <Button on:click={() => deleteIntegration(integration)}>Delete</Button>
     </div>
     {/each}
 
+    <IntegrationSetup />
 
-</div>
+</BoxSidebar>

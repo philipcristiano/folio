@@ -1,3 +1,3 @@
-<div class="flex max-w-sm">
+<div class="flex-initial">
 <slot></slot>
 </div>

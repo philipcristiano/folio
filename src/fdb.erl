@@ -1,6 +1,7 @@
 -module(fdb).
 
 -include_lib("kernel/include/logger.hrl").
+-include_lib("opentelemetry_api/include/otel_tracer.hrl").
 
 -export([connect/0, close/1, schema/0, run/2]).
 -export([write/3, select/3, select/4, delete/3]).
@@ -304,12 +305,24 @@ select(Conn, Table, Data, Extras) when is_atom(Table), is_map(Data) ->
 
 -spec select(epgsql:connection(), atom() | list(), map() | list()) -> {ok, list(map())}.
 select(Conn, Table, Data) when is_atom(Table), is_map(Data) ->
-    select(Conn, Table, Data, []);
+    ?with_span(
+        <<"database_select">>,
+        #{attributes => #{table => Table}},
+        fun(_Ctx) ->
+            select(Conn, Table, Data, [])
+        end
+    );
 select(Conn, Statement, PositionalValues) when is_list(Statement), is_list(PositionalValues) ->
-    case epgsql:equery(Conn, Statement, PositionalValues) of
-        {ok, RetCols, RetData} ->
-            {ok, serialise(RetCols, RetData)}
-    end.
+    ?with_span(
+        <<"database_select_sql">>,
+        #{},
+        fun(_Ctx) ->
+            case epgsql:equery(Conn, Statement, PositionalValues) of
+                {ok, RetCols, RetData} ->
+                    {ok, serialise(RetCols, RetData)}
+            end
+        end
+    ).
 
 delete(Conn, Table, Data) when is_atom(Table) ->
     Fun = fun(K, V, {Count, Statements, Vals}) ->

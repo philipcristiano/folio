@@ -41,7 +41,9 @@ handle_req(
     {ok, Integrations} = folio_integration:integrations(C),
     fdb:checkin(C),
 
-    {Req, 200, #{integrations => Integrations}, State};
+    Annotated = folio_integration:annotate_with_state(Integrations),
+
+    {Req, 200, #{integrations => Annotated}, State};
 handle_req(
     Req = #{method := <<"POST">>},
     _Params,

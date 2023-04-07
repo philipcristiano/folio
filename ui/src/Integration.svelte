@@ -5,6 +5,7 @@
   export let id;
   export let provider_name;
   export let accounts = [];
+  export let state = "";
 
   let fiat_total = "";
   let message = "";
@@ -35,8 +36,17 @@
 
 <div class="justify-center" >
         <p class="text-lg">
-        Provider: { provider_name } : ${ fiat_total }
+        Provider:
+
+
+        { provider_name } : ${ fiat_total }
         </p>
+
+        {#if state == "running"}<p class="text-sm">[in progress - refresh in a minute]</p>
+        {:else if state == "error"} <p class="text-lg"> [ERROR]</p>
+        {:else if state == "complete"}
+        {:else} <p class="text-lg">[UNDEFINED]</p>
+        {/if}
 
         {#each accounts as integration_account (integration_account.external_id, integration_account.symbol)}
         <p class="text-base">

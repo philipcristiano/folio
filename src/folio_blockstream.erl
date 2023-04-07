@@ -179,14 +179,12 @@ transactions(State = #{address := Address, last_seen_txid := LSTXID}) ->
     Path = <<<<"/api/address/">>/binary, Address/binary, <<"/txs/chain/">>/binary, LSTXID/binary>>,
     {ok, D} = request(Path),
     {Transactions, State1} = blockstream_txs_to_transactions(D, State),
-    io:format("RM tx ~p~n", [Transactions]),
     {lists:flatten(Transactions), State1}.
 
 blockstream_txs_to_transactions(Data, State) ->
     lists:foldl(
         fun(TX, {ExistingTXs, AccState}) ->
             {NewTXs, AccState1} = blockstream_tx_to_transactions(TX, AccState),
-            io:format("New TX ~p~n", [NewTXs]),
             {ExistingTXs ++ NewTXs, AccState1}
         end,
         {[], State},
@@ -258,7 +256,7 @@ blockstream_tx_to_transactions(
         AddrOuts
     ),
 
-    ?LOG_INFO(#{
+    ?LOG_DEBUG(#{
         what => blockstream_addr_ins,
         ins => AddrIns,
         outs => AddrOuts,

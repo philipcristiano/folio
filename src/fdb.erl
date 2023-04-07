@@ -96,6 +96,16 @@ schema() ->
         },
         #{
             type => table,
+            name => "integration_sync_states",
+            columns => [
+                #{name => "integration_id", type => "uuid"},
+                #{name => "timestamp", type => "timestamp"},
+                #{name => "state", type => "text"}
+            ],
+            primary_key => ["integration_id", "timestamp"]
+        },
+        #{
+            type => table,
             name => "integration_credentials",
             columns => [
                 #{name => "integration_id", type => "uuid"},

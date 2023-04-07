@@ -43,7 +43,8 @@
     });
     let json = await response.json()
     if (response.ok) {
-        message = "Starting integration sync" + integration.id;
+        integration.state = "running";
+        integrations = integrations;
     } else {
         message = json.message;
     };

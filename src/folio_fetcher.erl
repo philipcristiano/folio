@@ -27,7 +27,10 @@
 ]).
 
 -export([sync/0, sync/1]).
--record(state, {}).
+
+-type pid_info() ::
+    {integration, folio_integration:integration()}
+    | {transactions, folio_integration:integration(), folio_integration:account()}.
 
 %%%===================================================================
 %%% API functions
@@ -59,8 +62,9 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    erlang:process_flag(trap_exit, true),
     {ok, _TRef} = start_timer(),
-    {ok, #state{}}.
+    {ok, #{pid_info_map => #{}}}.
 
 sync() ->
     C = fdb:checkout(),
@@ -73,6 +77,10 @@ sync() ->
 sync(Int = #{id := _ID, provider_name := _PN}) ->
     gen_server:cast(?MODULE, {sync, Int}),
     ok.
+
+-spec register_pid(pid(), pid_info()) -> ok.
+register_pid(Pid, Info) ->
+    gen_server:cast(?MODULE, {register_pid, Pid, Info}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -102,12 +110,17 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({register_pid, Pid, Info}, State = #{pid_info_map := PidInfoMap}) ->
+    erlang:link(Pid),
+    NewPidInfoMap = PidInfoMap#{Pid => Info},
+    {noreply, State#{pid_info_map => NewPidInfoMap}};
 handle_cast({sync, Integration = #{id := _ID, provider_name := _PN}}, State) ->
     ?LOG_INFO(#{
         message => "Starting sync spawn",
         integration => Integration
     }),
-    ctx_spawn(<<"fetch_integration_accounts">>, fun() ->
+    ok = folio_integration:set_integration_state(Integration, starting),
+    ctx_spawn(<<"fetch_integration_accounts">>, {integration, Integration}, fun() ->
         ?LOG_INFO(#{
             message => "Starting sync",
             integration => Integration
@@ -117,16 +130,19 @@ handle_cast({sync, Integration = #{id := _ID, provider_name := _PN}}, State) ->
 
         lists:foreach(
             fun(Acc) ->
-                ctx_spawn(<<"fetch_integration">>, fun() ->
-                    {ok, Transactions} = folio_integration:fetch_integration_account_transactions(
-                        Integration, Acc
-                    ),
-                    ok = write_account_transactions(Integration, Acc, Transactions),
-                    ?LOG_INFO(#{
-                        message => account_transactions,
-                        account => Acc,
-                        transactions => Transactions
-                    })
+                ctx_spawn(<<"fetch_integration">>, {transactions, Integration, Acc}, fun() ->
+                    WriteFun = fun(TXs) ->
+                        ok = write_account_transactions(Integration, Acc, TXs),
+                        ?LOG_DEBUG(#{
+                            message => account_transactions,
+                            account => Acc,
+                            transactions => TXs
+                        })
+                    end,
+
+                    ok = folio_integration:fetch_integration_account_transactions(
+                        WriteFun, Integration, Acc
+                    )
                 end)
             end,
             Accounts
@@ -135,10 +151,10 @@ handle_cast({sync, Integration = #{id := _ID, provider_name := _PN}}, State) ->
 
     {noreply, State}.
 
-ctx_spawn(Name, Fun) ->
+ctx_spawn(Name, Info, Fun) ->
     Parent = ?current_span_ctx,
 
-    proc_lib:spawn(fun() ->
+    Pid = proc_lib:spawn(fun() ->
         %% a new process has a new context so the span created
         %% by the following `with_span` will have no parent
         Link = opentelemetry:link(Parent),
@@ -149,7 +165,9 @@ ctx_spawn(Name, Fun) ->
                 Fun()
             end
         )
-    end).
+    end),
+    register_pid(Pid, Info),
+    Pid.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -161,9 +179,44 @@ ctx_spawn(Name, Fun) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(_Info, State) ->
+handle_info({'EXIT', From, Reason}, State = #{pid_info_map := PidInfoMap}) ->
+    {Info, NewPidInfoMap} = maps:take(From, PidInfoMap),
+    Integration = integration_from_info(Info),
+    StillRunning = pid_info_has_integration(Integration, NewPidInfoMap),
+    ?LOG_DEBUG(#{
+        info => Info,
+        message => "exiting process info",
+        reason => Reason,
+        from => From,
+        still_running => StillRunning,
+        pid_info_map => PidInfoMap
+    }),
+    SyncState =
+        case {StillRunning, Reason} of
+            {false, normal} -> complete;
+            {true, normal} -> running;
+            {_, _} -> error
+        end,
+    folio_integration:set_integration_state(Integration, SyncState),
+    {noreply, State#{pid_info_map => NewPidInfoMap}};
+handle_info(Info, State) ->
+    ?LOG_ERROR(#{
+        message => "unhandled info",
+        info => Info
+    }),
     {noreply, State}.
 
+pid_info_has_integration(Int, PidInfoMap) ->
+    Infos = maps:values(PidInfoMap),
+    lists:any(
+        fun(Info) ->
+            integration_from_info(Info) == Int
+        end,
+        Infos
+    ).
+
+integration_from_info({integration, Int}) -> Int;
+integration_from_info({transactions, Int, _Account}) -> Int.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

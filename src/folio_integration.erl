@@ -10,9 +10,13 @@
     add_integration/2,
     delete_integration/2
 ]).
--export([fetch_integration_accounts/1, fetch_integration_account_transactions/2]).
+-export([
+    fetch_integration_accounts/1,
+    fetch_integration_account_transactions/2, fetch_integration_account_transactions/3
+]).
 
 -export([integrations/0, integrations/1, integration_by_id/2]).
+-export([set_integration_state/2, get_integration_state/1, annotate_with_state/1]).
 -export([integration_accounts/1, integration_accounts/2]).
 
 -export([transactions/1]).
@@ -39,6 +43,9 @@
     id := binary(),
     provider_name := binary()
 }.
+
+-export_type([integration_sync_state/0]).
+-type integration_sync_state() :: starting | running | complete | error.
 
 -export_type([account_transactions/0]).
 -type account_transactions() :: list(account_transaction).
@@ -155,6 +162,40 @@ delete_integration(C, ID) ->
     {ok, _} = fdb:delete(C, integration_account_transactions, RelatedQuery),
     ok.
 
+-spec set_integration_state(integration(), integration_sync_state()) -> ok.
+set_integration_state(#{id := ID}, State) when is_atom(State) ->
+    Now = qdate:to_date(os:system_time(second)),
+    D = #{
+        integration_id => ID,
+        timestamp => Now,
+        state => erlang:atom_to_binary(State)
+    },
+
+    C = fdb:checkout(),
+    {ok, _} = fdb:write(C, integration_sync_states, D),
+    fdb:checkin(C),
+    ok.
+
+-spec get_integration_state(integration()) -> {ok | error, integration_sync_state()}.
+get_integration_state(#{id := ID}) ->
+    C = fdb:checkout(),
+    {ok, Resp} = fdb:select(C, integration_sync_states, #{integration_id => ID}, [
+        {order_by, timestamp, desc}, {limit, 1}
+    ]),
+    fdb:checkin(C),
+
+    case Resp of
+        [] -> {ok, undefined};
+        [#{state := State}] -> {ok, State};
+        R -> {error, R}
+    end.
+
+annotate_with_state(Int = #{id := _ID}) ->
+    {ok, State} = get_integration_state(Int),
+    Int#{state => State};
+annotate_with_state(List) when is_list(List) ->
+    lists:map(fun annotate_with_state/1, List).
+
 -spec fetch_integration_accounts(integration()) -> any().
 fetch_integration_accounts(Integration = #{provider_name := PN}) ->
     #{mod := Mod} = provider_by_name(PN),
@@ -223,7 +264,13 @@ fetch_integration_account_transactions(Integration = #{provider_name := PN}, Acc
     InitState = Mod:account_transactions_init(Integration, Account),
     {ok, collect_account_transactions([], Mod, InitState)}.
 
-collect_account_transactions(List, Mod, State) ->
+-spec fetch_integration_account_transactions(any(), integration(), account()) -> ok.
+fetch_integration_account_transactions(Callback, Integration = #{provider_name := PN}, Account) ->
+    #{mod := Mod} = provider_by_name(PN),
+    InitState = Mod:account_transactions_init(Integration, Account),
+    collect_account_transactions(Callback, Mod, InitState).
+
+collect_account_transactions(List, Mod, State) when is_list(List) ->
     Resp = ?with_span(
         <<"integration_iteration">>,
         #{attributes => #{mod => Mod}},
@@ -233,12 +280,29 @@ collect_account_transactions(List, Mod, State) ->
     ),
 
     case Resp of
-        {incomplete, NewAccounts, NewState} ->
-            NewList = List ++ NewAccounts,
+        {incomplete, NewTXs, NewState} ->
+            NewList = List ++ NewTXs,
             collect_account_transactions(NewList, Mod, NewState);
-        {complete, NewAccounts, _NewState} ->
-            NewList = List ++ NewAccounts,
+        {complete, NewTXs, _NewState} ->
+            NewList = List ++ NewTXs,
             NewList
+    end;
+collect_account_transactions(Callback, Mod, State) when is_function(Callback) ->
+    Resp = ?with_span(
+        <<"integration_iteration">>,
+        #{attributes => #{mod => Mod}},
+        fun(_Ctx) ->
+            Mod:account_transactions(State)
+        end
+    ),
+
+    case Resp of
+        {incomplete, NewTXs, NewState} ->
+            Callback(NewTXs),
+            collect_account_transactions(Callback, Mod, NewState);
+        {complete, NewTXs, _NewState} ->
+            Callback(NewTXs),
+            ok
     end.
 
 new_id() ->

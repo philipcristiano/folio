@@ -106,7 +106,7 @@ price_for_asset_id(AID) ->
 price_for_asset_id(_C, <<"united-states-dollar">>) ->
     {ok, #{amount => <<"1.0">>}};
 price_for_asset_id(C, AID) ->
-    ?LOG_INFO(#{
+    ?LOG_DEBUG(#{
         message => <<"price for asset id">>,
         assetid => AID
     }),
@@ -169,7 +169,7 @@ handle_cast(sync_asset_prices, State) ->
     DT = qdate:to_date(Now),
     {ok, Prices} = folio_cryptowatch:get_asset_prices(),
 
-    ?LOG_INFO(#{
+    ?LOG_DEBUG(#{
         message => asset_prices,
         prices => Prices,
         datetime => DT

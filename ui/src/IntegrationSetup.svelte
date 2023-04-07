@@ -92,7 +92,7 @@ Add Integration:
           {:else if field.type == "choice"}
           {#each field.choices as field_choice}
           <label>
-	          <input type=radio bind:group={addableIntegration.inputs[field.name]} name="{field_choice}" value={field_choice}>
+	          <input class="p-1" type=radio bind:group={addableIntegration.inputs[field.name]} name="{field_choice}" value={field_choice}>
             {field_choice}
             </label>
           {/each}

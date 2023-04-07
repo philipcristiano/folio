@@ -96,13 +96,17 @@ asset_for_symbol(C, SymBin) when is_binary(SymBin) ->
         _else -> undefined
     end.
 
+price_for_asset_id(<<"united-states-dollar">>) ->
+    {ok, #{amount => <<"1.0">>}};
 price_for_asset_id(AID) ->
     C = fdb:checkout(),
     Resp = price_for_asset_id(C, AID),
     fdb:checkin(C),
     Resp.
+price_for_asset_id(_C, <<"united-states-dollar">>) ->
+    {ok, #{amount => <<"1.0">>}};
 price_for_asset_id(C, AID) ->
-    ?LOG_DEBUG(#{
+    ?LOG_INFO(#{
         message => <<"price for asset id">>,
         assetid => AID
     }),

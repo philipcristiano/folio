@@ -24,3 +24,8 @@ jobs:
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+
+  js:
+    uses: "./.github/workflows/r-javascript.yml"
+    with:
+      context: ./ui

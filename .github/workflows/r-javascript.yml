@@ -1,0 +1,25 @@
+name: Docker Build
+
+on:
+  workflow_call:
+    inputs:
+
+      context:
+        description: "Context path"
+        default: .
+        type: string
+
+      timeout:
+        description: "Timeout for jobs in minutes"
+        default: 15
+        type: number
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    timeout-minutes: ${{ inputs.timeout }}
+    steps:
+    - uses: 'actions/checkout@v3'
+
+    - run: make jsfmt_check

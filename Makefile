@@ -31,11 +31,20 @@ rel:
 tar:
 	./rebar3 tar
 
+format: erlfmt jsfmt
+check: erlfmt_check jsfmt_check
+
 erlfmt:
 	./rebar3 fmt -w
 
 erlfmt_check:
 	./rebar3 fmt --check
+
+jsfmt:
+	cd ui; npx prettier --write .
+
+jsfmt_check:
+	cd ui; npx prettier -c .
 
 .PHONY: services
 services:

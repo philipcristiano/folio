@@ -38,8 +38,6 @@ handle_req(
     _Body,
     State
 ) ->
-    ?LOG_DEBUG(#{message => getAccounts}),
-
     C = fdb:checkout(),
     {ok, Accounts} = folio_integration:integration_accounts(C, IntegrationID),
     AccountsWithFiat = folio_accounts:add_fiat_value_for_accounts(C, Accounts),

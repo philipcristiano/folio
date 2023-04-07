@@ -35,8 +35,6 @@ handle_req(
     _Body,
     State
 ) ->
-    ?LOG_INFO(#{message => getAccounts}),
-
     {ok, C} = fdb:connect(),
     {ok, Transactions} = folio_integration:transactions(C),
     TOut = lists:map(fun fmt_account_transaction/1, Transactions),

@@ -87,7 +87,7 @@
 
 <div class="border-grey max-w-sm shadow-lg border-1 p-3">
   <div class="border-grey max-w-sm shadow-lg border-1 p-1">
-    <p>Balance: ${ balance }</p>
+    <p class="text-lg">Balance: ${ balance }</p>
   </div>
 {#each integrations as integration (integration.id)}
 <div class="border-grey max-w-sm shadow-lg border-1 p-1">

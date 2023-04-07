@@ -1,3 +1,3 @@
-<div class="flex-initial w-64 m-2">
+<div class="min-w-full md:min-w-fit md:col-span-5">
 <slot></slot>
 </div>

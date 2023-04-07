@@ -11,7 +11,7 @@
 
 </script>
 
-<main class="flex container px-4 columns-2">
+<main class="columns-1 md:columns-6 ">
   <BoxSidebar><IntegrationList /></BoxSidebar>
   <BoxContent><TransactionList /></BoxContent>
 

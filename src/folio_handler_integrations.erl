@@ -37,8 +37,9 @@ handle_req(
     _Body,
     State
 ) ->
-    {ok, C} = fdb:connect(),
+    C = fdb:checkout(),
     {ok, Integrations} = folio_integration:integrations(C),
+    fdb:checkin(C),
 
     {Req, 200, #{integrations => Integrations}, State};
 handle_req(

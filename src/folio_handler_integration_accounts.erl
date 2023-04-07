@@ -40,12 +40,11 @@ handle_req(
 ) ->
     ?LOG_DEBUG(#{message => getAccounts}),
 
-    {ok, C} = fdb:connect(),
+    C = fdb:checkout(),
     {ok, Accounts} = folio_integration:integration_accounts(C, IntegrationID),
     AccountsWithFiat = folio_accounts:add_fiat_value_for_accounts(C, Accounts),
     FiatTotal = folio_accounts:fiat_value_of_accounts(AccountsWithFiat),
-
-    fdb:close(C),
+    fdb:checkin(C),
 
     {Req, 200, #{fiat_total => FiatTotal, accounts => AccountsWithFiat}, State}.
 

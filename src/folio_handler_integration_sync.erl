@@ -30,9 +30,9 @@ handle_req(
     _Body,
     State
 ) ->
-    {ok, C} = fdb:connect(),
+    C = fdb:checkout(),
     {ok, Integration} = folio_integration:integration_by_id(C, IntegrationID),
-    fdb:close(C),
+    fdb:checkin(C),
     folio_fetcher:sync(Integration),
 
     {Req, 202, #{}, State}.

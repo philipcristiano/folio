@@ -9,6 +9,7 @@
         sasl,
         decimal,
         epgsql,
+        poolboy,
         uuid,
         jsx,
         jwt,

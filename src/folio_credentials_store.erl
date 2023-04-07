@@ -6,20 +6,20 @@
 
 -spec get_credentials(folio_integration:id()) -> map() | undefined.
 get_credentials(ID) ->
-    {ok, C} = fdb:connect(),
+    C = fdb:checkout(),
     {ok, [#{credentials := CredJson}]} = fdb:select(C, integration_credentials, #{
         integration_id => ID
     }),
-    fdb:close(C),
+    fdb:checkin(C),
     Creds = jsx:decode(CredJson, [return_maps]),
     map_keys_to_atoms(Creds).
 
 -spec set_credentials(folio_integration:id(), map()) -> ok.
 set_credentials(ID, Creds) ->
     CredJson = jsx:encode(Creds),
-    {ok, C} = fdb:connect(),
+    C = fdb:checkout(),
     {ok, _} = fdb:write(C, integration_credentials, #{integration_id => ID, credentials => CredJson}),
-    fdb:close(C),
+    fdb:checkin(C),
     ok.
 
 map_keys_to_atoms(M) ->

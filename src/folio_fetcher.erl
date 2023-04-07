@@ -63,7 +63,7 @@ init([]) ->
     {ok, #state{}}.
 
 sync() ->
-    {ok, C} = fdb:connect(),
+    C = fdb:checkout(),
     {ok, Integrations} = folio_integration:integrations(C),
 
     lists:foreach(fun sync/1, Integrations),
@@ -193,7 +193,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 write_accounts(#{id := IntegrationID}, Accounts) ->
-    {ok, C} = fdb:connect(),
+    C = fdb:checkout(),
     lists:foreach(
         fun(#{id := ID, balances := Balances}) ->
             AData = #{external_id => ID, integration_id => IntegrationID},
@@ -218,7 +218,7 @@ write_accounts(#{id := IntegrationID}, Accounts) ->
         end,
         Accounts
     ),
-    fdb:close(C),
+    fdb:checkin(C),
     ok.
 
 % TODO: Move fdb:write to folio_integration
@@ -228,7 +228,7 @@ write_accounts(#{id := IntegrationID}, Accounts) ->
     folio_integration:account_transactions()
 ) -> ok.
 write_account_transactions(#{id := IntegrationID}, _Account = #{id := AccountID}, Transactions) ->
-    {ok, C} = fdb:connect(),
+    C = fdb:checkout(),
     lists:foreach(
         fun(
             _T = #{
@@ -256,7 +256,7 @@ write_account_transactions(#{id := IntegrationID}, _Account = #{id := AccountID}
         end,
         Transactions
     ),
-    fdb:close(C),
+    fdb:checkin(C),
     ok.
 
 start_timer() ->

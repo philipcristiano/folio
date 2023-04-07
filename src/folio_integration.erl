@@ -137,9 +137,9 @@ add_integration(Name, AccountProperties) ->
     IntegrationID = new_id(),
     Integration = #{id => IntegrationID, provider_name => Name},
 
-    {ok, C} = fdb:connect(),
+    C = fdb:checkout(),
     {ok, _} = fdb:write(C, integrations, Integration),
-    fdb:close(C),
+    fdb:checkin(C),
 
     ok = Mod:add(IntegrationID, AccountProperties),
     {ok, Integration}.
@@ -162,8 +162,10 @@ fetch_integration_accounts(Integration = #{provider_name := PN}) ->
     {ok, collect_accounts([], Mod, InitState)}.
 
 integrations() ->
-    {ok, C} = fdb:connect(),
-    integrations(C).
+    C = fdb:checkout(),
+    R = integrations(C),
+    fdb:checkin(C),
+    R.
 
 -spec integrations(epgsql:connection()) -> {ok, [integration()]}.
 integrations(C) ->

@@ -14,6 +14,7 @@ start(_Type, _Args) ->
     % Setup database
     {ok, Conn} = fdb:connect(),
     fdb:run(Conn, fdb:schema()),
+    fdb:close(Conn),
 
     ok = init_folio_modules(),
     {ok, Pid} = folio_sup:start_link(),

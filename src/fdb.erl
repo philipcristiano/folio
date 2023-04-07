@@ -5,18 +5,53 @@
 -export([connect/0, close/1, schema/0, run/2]).
 -export([write/3, select/3, select/4, delete/3]).
 
-% -type user() :: #{
-%     id := user_id(),
-%     org_id := binary()
-% }.
+-export([start_link/1, checkout/0, child_spec/0, checkin/1]).
+
+-behaviour(poolboy_worker).
+
+%%% Poolboy
+
+start_link([]) ->
+    connect().
+
+child_spec() ->
+    DB = poolboy:child_spec(
+        db,
+        [
+            {size, 10},
+            {name, {local, db}},
+            {worker_module, fdb}
+        ],
+        []
+    ),
+    DB.
+
+checkout() ->
+    poolboy:checkout(db).
+checkin(Worker) ->
+    poolboy:checkin(db, Worker).
+
+%%% DB direct calls
 
 connect() ->
+    Host = folio_config:pg(host, "localhost"),
+    User = folio_config:pg(user, "folio_admin"),
+    DB = folio_config:pg(database, "folio"),
+    Port = folio_config:pg(port, "5432"),
+    ?LOG_INFO(#{
+        message => "Connecting to database",
+        host => Host,
+        user => User,
+        port => Port,
+        database => DB
+    }),
+
     {ok, Conn} = epgsql:connect(#{
-        host => folio_config:pg(host, "localhost"),
-        username => folio_config:pg(user, "folio_admin"),
+        host => Host,
+        username => User,
         password => folio_config:pg(password, "pass"),
-        database => folio_config:pg(database, "folio"),
-        port => folio_config:pg(port, "5432"),
+        database => DB,
+        port => Port,
         timeout => 4000
     }),
     {ok, Conn}.

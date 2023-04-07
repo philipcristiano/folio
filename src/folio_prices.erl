@@ -79,9 +79,9 @@ sync_asset_prices() ->
 
 asset_for_symbol(SymBin) when is_binary(SymBin) ->
     Sym = string:lowercase(SymBin),
-    {ok, C} = fdb:connect(),
+    C = fdb:checkout(),
     {ok, Resp} = fdb:select(C, assets, #{symbol => Sym}),
-    fdb:close(C),
+    fdb:checkin(C),
     case Resp of
         [] -> undefined;
         [A] -> A;
@@ -97,9 +97,9 @@ asset_for_symbol(C, SymBin) when is_binary(SymBin) ->
     end.
 
 price_for_asset_id(AID) ->
-    {ok, C} = fdb:connect(),
+    C = fdb:checkout(),
     Resp = price_for_asset_id(C, AID),
-    fdb:close(C),
+    fdb:checkin(C),
     Resp.
 price_for_asset_id(C, AID) ->
     ?LOG_DEBUG(#{
@@ -159,7 +159,7 @@ handle_cast(sync_assets, State) ->
 
     {noreply, State1};
 handle_cast(sync_asset_prices, State) ->
-    {ok, C} = fdb:connect(),
+    C = fdb:checkout(),
 
     Now = os:system_time(second),
     DT = qdate:to_date(Now),
@@ -173,7 +173,7 @@ handle_cast(sync_asset_prices, State) ->
 
     write_asset_prices(C, DT, Prices),
 
-    fdb:close(C),
+    fdb:checkin(C),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -219,7 +219,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec write_assets(list(cryptowatch:asset()), any()) -> {ok, any()}.
 write_assets(Assets, State) ->
-    {ok, C} = fdb:connect(),
+    C = fdb:checkout(),
     lists:foreach(
         fun(#{id := ID, symbol := Symbol, name := Name}) ->
             Data = #{
@@ -229,7 +229,7 @@ write_assets(Assets, State) ->
         end,
         Assets
     ),
-    fdb:close(C),
+    fdb:checkin(C),
     {ok, State}.
 
 write_asset_prices(C, DT, Prices) ->

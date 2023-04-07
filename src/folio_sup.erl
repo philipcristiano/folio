@@ -18,5 +18,7 @@ init([]) ->
         start => {folio_prices, start_link, []}
     },
 
-    Procs = [Fetcher, Prices],
+    DB = fdb:child_spec(),
+
+    Procs = [DB, Fetcher, Prices],
     {ok, {{one_for_one, 1, 5}, Procs}}.

@@ -158,27 +158,38 @@ handle_cast(sync_assets, State) ->
     ?LOG_INFO(#{
         message => "Starting asset sync"
     }),
-    {ok, Assets} = folio_cryptowatch:get_assets(),
-    {ok, State1} = write_assets(Assets, State),
-
-    {noreply, State1};
+    ?with_span(
+        <<"sync_assets">>,
+        #{attributes => #{}},
+        fun(_Ctx) ->
+            {ok, Assets} = folio_cryptowatch:get_assets(),
+            {ok, State1} = write_assets(Assets, State),
+            {noreply, State1}
+        end
+    );
 handle_cast(sync_asset_prices, State) ->
-    C = fdb:checkout(),
+    ?with_span(
+        <<"sync_asset_prices">>,
+        #{attributes => #{}},
+        fun(_Ctx) ->
+            C = fdb:checkout(),
 
-    Now = os:system_time(second),
-    DT = qdate:to_date(Now),
-    {ok, Prices} = folio_cryptowatch:get_asset_prices(),
+            Now = os:system_time(second),
+            DT = qdate:to_date(Now),
+            {ok, Prices} = folio_cryptowatch:get_asset_prices(),
 
-    ?LOG_DEBUG(#{
-        message => asset_prices,
-        prices => Prices,
-        datetime => DT
-    }),
+            ?LOG_DEBUG(#{
+                message => asset_prices,
+                prices => Prices,
+                datetime => DT
+            }),
 
-    write_asset_prices(C, DT, Prices),
+            write_asset_prices(C, DT, Prices),
 
-    fdb:checkin(C),
-    {noreply, State}.
+            fdb:checkin(C),
+            {noreply, State}
+        end
+    ).
 
 %%--------------------------------------------------------------------
 %% @private

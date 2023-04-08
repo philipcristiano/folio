@@ -217,47 +217,53 @@ run(Conn, Schema) ->
 
 -spec write(epgsql:connection(), atom(), map()) -> {ok, map()}.
 write(Conn, Table, Data) when is_map(Data) ->
-    Fun = fun(K, V, {Count, Keys, Pos, Vals}) ->
-        FKeys = Keys ++ [erlang:atom_to_list(K)],
-        FCount = Count + 1,
-        FPos = Pos ++ ["$" ++ erlang:integer_to_list(FCount)],
-        FVal = Vals ++ [V],
-        {FCount, FKeys, FPos, FVal}
-    end,
-    {_C, SQLKeys, SQLPos, SQLVals} = maps:fold(Fun, {0, [], [], []}, Data),
+    ?with_span(
+        <<"database_write">>,
+        #{attributes => #{table => Table}},
+        fun(_Ctx) ->
+            Fun = fun(K, V, {Count, Keys, Pos, Vals}) ->
+                FKeys = Keys ++ [erlang:atom_to_list(K)],
+                FCount = Count + 1,
+                FPos = Pos ++ ["$" ++ erlang:integer_to_list(FCount)],
+                FVal = Vals ++ [V],
+                {FCount, FKeys, FPos, FVal}
+            end,
+            {_C, SQLKeys, SQLPos, SQLVals} = maps:fold(Fun, {0, [], [], []}, Data),
 
-    PKey = lists:flatten([erlang:atom_to_list(Table), "_pkey"]),
+            PKey = lists:flatten([erlang:atom_to_list(Table), "_pkey"]),
 
-    KeysStatement = ["(", lists:join(", ", SQLKeys), ")"],
-    PosStatement = ["(", lists:join(", ", SQLPos), ")"],
+            KeysStatement = ["(", lists:join(", ", SQLKeys), ")"],
+            PosStatement = ["(", lists:join(", ", SQLPos), ")"],
 
-    KVs = lists:zip(SQLKeys, SQLPos),
-    UpdateStatements = lists:map(
-        fun({K, V}) ->
-            lists:flatten([K, " = ", V])
-        end,
-        KVs
-    ),
-    UpdateStatement = lists:join(", ", UpdateStatements),
+            KVs = lists:zip(SQLKeys, SQLPos),
+            UpdateStatements = lists:map(
+                fun({K, V}) ->
+                    lists:flatten([K, " = ", V])
+                end,
+                KVs
+            ),
+            UpdateStatement = lists:join(", ", UpdateStatements),
 
-    Statement = lists:flatten([
-        "INSERT INTO ",
-        erlang:atom_to_list(Table),
-        " ",
-        KeysStatement,
-        " VALUES ",
-        PosStatement,
-        " ON CONFLICT ON CONSTRAINT ",
-        PKey,
-        " DO UPDATE set ",
-        UpdateStatement,
-        " RETURNING *;"
-    ]),
-    case epgsql:equery(Conn, Statement, SQLVals) of
-        {ok, 1, RetCols, RetData} ->
-            [RetMap] = serialise(RetCols, RetData),
-            {ok, RetMap}
-    end.
+            Statement = lists:flatten([
+                "INSERT INTO ",
+                erlang:atom_to_list(Table),
+                " ",
+                KeysStatement,
+                " VALUES ",
+                PosStatement,
+                " ON CONFLICT ON CONSTRAINT ",
+                PKey,
+                " DO UPDATE set ",
+                UpdateStatement,
+                " RETURNING *;"
+            ]),
+            case epgsql:equery(Conn, Statement, SQLVals) of
+                {ok, 1, RetCols, RetData} ->
+                    [RetMap] = serialise(RetCols, RetData),
+                    {ok, RetMap}
+            end
+        end
+    ).
 
 val_to_operator({'<', V}) -> {" < ", V};
 val_to_operator({'<=', V}) -> {" <= ", V};
@@ -325,30 +331,36 @@ select(Conn, Statement, PositionalValues) when is_list(Statement), is_list(Posit
     ).
 
 delete(Conn, Table, Data) when is_atom(Table) ->
-    Fun = fun(K, V, {Count, Statements, Vals}) ->
-        FCount = Count + 1,
-        Statement = lists:flatten([
-            erlang:atom_to_list(K), " = ", "$", erlang:integer_to_list(FCount)
-        ]),
-        FStatement = Statements ++ [Statement],
-        FVal = Vals ++ [V],
-        {FCount, FStatement, FVal}
-    end,
-    {_C, QueryStatements, SQLVals} = maps:fold(Fun, {0, [], []}, Data),
-    QueryStatement = lists:join(" AND ", QueryStatements),
-    Where =
-        case QueryStatement of
-            [] -> "";
-            Else -> [" WHERE ", Else]
-        end,
+    ?with_span(
+        <<"database_delete">>,
+        #{attributes => #{table => Table}},
+        fun(_Ctx) ->
+            Fun = fun(K, V, {Count, Statements, Vals}) ->
+                FCount = Count + 1,
+                Statement = lists:flatten([
+                    erlang:atom_to_list(K), " = ", "$", erlang:integer_to_list(FCount)
+                ]),
+                FStatement = Statements ++ [Statement],
+                FVal = Vals ++ [V],
+                {FCount, FStatement, FVal}
+            end,
+            {_C, QueryStatements, SQLVals} = maps:fold(Fun, {0, [], []}, Data),
+            QueryStatement = lists:join(" AND ", QueryStatements),
+            Where =
+                case QueryStatement of
+                    [] -> "";
+                    Else -> [" WHERE ", Else]
+                end,
 
-    Statement = lists:flatten([
-        "DELETE FROM ",
-        erlang:atom_to_list(Table),
-        Where,
-        ";"
-    ]),
-    epgsql:equery(Conn, Statement, SQLVals).
+            Statement = lists:flatten([
+                "DELETE FROM ",
+                erlang:atom_to_list(Table),
+                Where,
+                ";"
+            ]),
+            epgsql:equery(Conn, Statement, SQLVals)
+        end
+    ).
 
 determine_migrations(Conn, Schema) ->
     lists:foldl(fun(I, Acc) -> Acc ++ determine_migration(Conn, I) end, [], Schema).

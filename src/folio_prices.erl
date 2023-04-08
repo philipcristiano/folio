@@ -30,6 +30,7 @@
     sync_assets/0,
     sync_asset_prices/0,
     asset_for_symbol/1,
+    asset_for_symbol/2,
     price_for_asset_id/1, price_for_asset_id/2
 ]).
 -record(state, {}).

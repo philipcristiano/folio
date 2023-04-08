@@ -220,18 +220,30 @@ integration_by_id(C, ID) ->
 
 -spec integration_accounts(epgsql:connection()) -> {ok, [account()]}.
 integration_accounts(C) ->
-    Query =
-        "SELECT iab.integration_id as integration_id, iab.symbol as symbol, iab.balance as balance, iab.external_id as external_id FROM integration_account_balances As iab WHERE iab.balance > 0;",
-    {ok, A} = fdb:select(C, Query, []),
-    {ok, A}.
+    ?with_span(
+        <<"integration_accounts">>,
+        #{attributes => #{}},
+        fun(_Ctx) ->
+            Query =
+                "SELECT iab.integration_id as integration_id, iab.symbol as symbol, iab.balance as balance, iab.external_id as external_id FROM integration_account_balances As iab WHERE iab.balance > 0;",
+            {ok, A} = fdb:select(C, Query, []),
+            {ok, A}
+        end
+    ).
 
 -spec integration_accounts(epgsql:connection(), id()) -> {ok, [account()]}.
 integration_accounts(C, IntegrationID) ->
-    Query =
-        "SELECT iab.integration_id as integration_id, iab.symbol as symbol, iab.balance as balance, iab.external_id as external_id FROM integration_account_balances As iab WHERE iab.integration_id = $1 AND iab.balance > 0;",
-    {ok, A} = fdb:select(C, Query, [IntegrationID]),
-    %{ok, A} = fdb:select(C, integration_accounts, #{integration_id => IntegrationID}),
-    {ok, A}.
+    ?with_span(
+        <<"integration_accounts">>,
+        #{attributes => #{integration_id => IntegrationID}},
+        fun(_Ctx) ->
+            Query =
+                "SELECT iab.integration_id as integration_id, iab.symbol as symbol, iab.balance as balance, iab.external_id as external_id FROM integration_account_balances As iab WHERE iab.integration_id = $1 AND iab.balance > 0;",
+            {ok, A} = fdb:select(C, Query, [IntegrationID]),
+            %{ok, A} = fdb:select(C, integration_accounts, #{integration_id => IntegrationID}),
+            {ok, A}
+        end
+    ).
 
 -spec transactions(epgsql:connection()) -> {ok, [account_transactions()]}.
 transactions(C) ->

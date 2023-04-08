@@ -28,9 +28,21 @@ child_spec() ->
     DB.
 
 checkout() ->
-    poolboy:checkout(db).
+    ?with_span(
+        <<"db_checkout">>,
+        #{attributes => #{}},
+        fun(_Ctx) ->
+            poolboy:checkout(db)
+        end
+    ).
 checkin(Worker) ->
-    poolboy:checkin(db, Worker).
+    ?with_span(
+        <<"db_checkin">>,
+        #{attributes => #{}},
+        fun(_Ctx) ->
+            poolboy:checkin(db, Worker)
+        end
+    ).
 
 %%% DB direct calls
 

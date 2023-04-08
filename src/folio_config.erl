@@ -6,7 +6,8 @@
     jwt_key/0,
     environment/0,
     hosting_port/0,
-    pg/2
+    pg/2,
+    pg_pool/2
 ]).
 
 domain() ->
@@ -44,3 +45,5 @@ pg(port, Default) -> erlang:list_to_integer(os:getenv("PGPORT", Default));
 pg(database, Default) -> os:getenv("PGDATABASE", Default);
 pg(user, Default) -> os:getenv("PGUSER", Default);
 pg(password, Default) -> os:getenv("PGPASSWORD", Default).
+
+pg_pool(size, Default) -> erlang:list_to_integer(os:getenv("PG_POOL_SIZE", Default)).

@@ -36,3 +36,18 @@ sh ./db_init.sh
 * Loopring
   * Balances
   * Transfers in the last ~90 days.
+
+
+## Installation
+
+### Configuration
+
+#### Postgres
+
+`PGHOST` - (`localhost`) - Hostname of the database
+`PGPORT` - (`5432`) - Port of the database
+`PGDATABASE` - (`folio`) - Postgres database name
+`PGUSER` - (`folio_admin`) - Postgres username
+`PGPASSWORD` - (`pass`) - Postgres user password
+
+`PG_POOL_SIZE` - (`10`) - Number of concurrent connections to Postgres

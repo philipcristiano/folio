@@ -45,7 +45,6 @@ accounts_init(_Integration = #{id := IntegrationID}) ->
 
 accounts(State = #{get_account_list := true}) ->
     {ok, _Headers, AccountResp, State1} = request(<<"/v1/account/list">>, State),
-    io:format("Resp ~p~n", [AccountResp]),
     ToSyncLists = lists:map(
         fun(#{<<"account">> := Acct}) -> [{exchange, Acct}, {earn, Acct}] end, AccountResp
     ),
@@ -56,8 +55,6 @@ accounts(State = #{to_sync := []}) ->
 accounts(State = #{to_sync := [{exchange, GeminiAcct} | T]}) ->
     RequestArgs = #{account => GeminiAcct},
     {ok, _Headers, BalanceResp, State1} = request(<<"/v1/balances">>, RequestArgs, State),
-    io:format("Resp ~p~n", [BalanceResp]),
-
     FBalances = lists:map(fun to_folio_balance/1, BalanceResp),
     Acct = #{
         id => <<<<"exchange.">>/binary, GeminiAcct/binary>>,

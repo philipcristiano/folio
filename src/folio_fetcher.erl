@@ -251,29 +251,35 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 write_accounts(#{id := IntegrationID}, Accounts) ->
     C = fdb:checkout(),
-    lists:foreach(
-        fun(#{id := ID, balances := Balances}) ->
-            AData = #{external_id => ID, integration_id => IntegrationID},
-            {ok, _} = fdb:write(C, integration_accounts, AData),
+    ?with_span(
+        <<"write_accounts">>,
+        #{attributes => #{integration_id => IntegrationID}},
+        fun(_Ctx) ->
             lists:foreach(
-                fun(#{balance := Balance, symbol := Symbol}) ->
-                    BalData = #{
-                        integration_id => IntegrationID,
-                        external_id => ID,
-                        symbol => Symbol,
-                        balance => decimal:to_binary(Balance)
-                    },
-                    ?LOG_DEBUG(#{
-                        message => write_cb_account,
-                        account_data => AData,
-                        balance_data => BalData
-                    }),
-                    {ok, _} = fdb:write(C, integration_account_balances, BalData)
+                fun(#{id := ID, balances := Balances}) ->
+                    AData = #{external_id => ID, integration_id => IntegrationID},
+                    {ok, _} = fdb:write(C, integration_accounts, AData),
+                    lists:foreach(
+                        fun(#{balance := Balance, symbol := Symbol}) ->
+                            BalData = #{
+                                integration_id => IntegrationID,
+                                external_id => ID,
+                                symbol => Symbol,
+                                balance => decimal:to_binary(Balance)
+                            },
+                            ?LOG_DEBUG(#{
+                                message => write_cb_account,
+                                account_data => AData,
+                                balance_data => BalData
+                            }),
+                            {ok, _} = fdb:write(C, integration_account_balances, BalData)
+                        end,
+                        Balances
+                    )
                 end,
-                Balances
+                Accounts
             )
-        end,
-        Accounts
+        end
     ),
     fdb:checkin(C),
     ok.
@@ -286,32 +292,38 @@ write_accounts(#{id := IntegrationID}, Accounts) ->
 ) -> ok.
 write_account_transactions(#{id := IntegrationID}, _Account = #{id := AccountID}, Transactions) ->
     C = fdb:checkout(),
-    lists:foreach(
-        fun(
-            _T = #{
-                source_id := SourceID,
-                datetime := DT,
-                direction := Direction,
-                symbol := Symbol,
-                amount := Amount,
-                type := Type,
-                description := Description
-            }
-        ) ->
-            DBT = #{
-                integration_id => IntegrationID,
-                external_id => AccountID,
-                source_id => SourceID,
-                timestamp => DT,
-                direction => Direction,
-                symbol => Symbol,
-                amount => decimal:to_binary(Amount),
-                type => Type,
-                description => Description
-            },
-            {ok, _} = fdb:write(C, integration_account_transactions, DBT)
-        end,
-        Transactions
+    ?with_span(
+        <<"write_account_transactions">>,
+        #{attributes => #{integration_id => IntegrationID, account_id => AccountID}},
+        fun(_Ctx) ->
+            lists:foreach(
+                fun(
+                    _T = #{
+                        source_id := SourceID,
+                        datetime := DT,
+                        direction := Direction,
+                        symbol := Symbol,
+                        amount := Amount,
+                        type := Type,
+                        description := Description
+                    }
+                ) ->
+                    DBT = #{
+                        integration_id => IntegrationID,
+                        external_id => AccountID,
+                        source_id => SourceID,
+                        timestamp => DT,
+                        direction => Direction,
+                        symbol => Symbol,
+                        amount => decimal:to_binary(Amount),
+                        type => Type,
+                        description => Description
+                    },
+                    {ok, _} = fdb:write(C, integration_account_transactions, DBT)
+                end,
+                Transactions
+            )
+        end
     ),
     fdb:checkin(C),
     ok.

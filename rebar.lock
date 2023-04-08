@@ -81,7 +81,7 @@
   1},
  {<<"specified_handler">>,
   {git,"https://github.com/philipcristiano/specified_handler.git",
-       {ref,"0d894ee6c51a7ebc0597e9b6654a997797ef8775"}},
+       {ref,"05e9293676a7ed9382feee39b413b0a0d55e17c2"}},
   0},
  {<<"ssl_verify_fun">>,{pkg,<<"ssl_verify_fun">>,<<"1.1.6">>},1},
  {<<"telemetry">>,{pkg,<<"telemetry">>,<<"1.1.0">>},0},

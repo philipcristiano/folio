@@ -153,6 +153,8 @@ handle_cast({sync, Integration = #{id := _ID, provider_name := _PN}}, State) ->
 
 ctx_spawn(Name, Info, Fun) ->
     Parent = ?current_span_ctx,
+    Integration = integration_from_info(Info),
+    Attrs = otel_attributes_for_integration(Integration),
 
     Pid = proc_lib:spawn(fun() ->
         %% a new process has a new context so the span created
@@ -160,7 +162,7 @@ ctx_spawn(Name, Info, Fun) ->
         Link = opentelemetry:link(Parent),
         ?with_span(
             Name,
-            #{links => [Link]},
+            #{links => [Link], attributes => Attrs},
             fun(_Ctx) ->
                 Fun()
             end
@@ -217,6 +219,8 @@ pid_info_has_integration(Int, PidInfoMap) ->
 
 integration_from_info({integration, Int}) -> Int;
 integration_from_info({transactions, Int, _Account}) -> Int.
+otel_attributes_for_integration(#{id := ID, provider_name := P}) ->
+    #{integration_id => ID, provider_name => P}.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

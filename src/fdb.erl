@@ -20,6 +20,7 @@ child_spec() ->
         db,
         [
             {size, 10},
+            {max_overflow, 20},
             {name, {local, db}},
             {worker_module, fdb}
         ],

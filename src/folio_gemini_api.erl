@@ -17,7 +17,7 @@
 -export([account_transactions_init/2, account_transactions/1]).
 
 folio_init() ->
-    ok = throttle:setup(?MODULE, 2, per_second),
+    ok = throttle:setup(?MODULE, 1, per_second),
     ok = throttle:setup(?TRANSFERS_THROTTLE_KEY, 1, 5000),
     ok.
 
@@ -424,26 +424,4 @@ sign(PathQS, ArgMap, State) ->
     Headers.
 
 rate_limit() ->
-    rate_limit(?MODULE, key).
-rate_limit(Scope, Key) ->
-    case throttle:check(Scope, Key) of
-        {ok, _RemainingAttempts, _TimeToReset} ->
-            ok;
-        {limit_exceeded, _, TimeToReset} ->
-            ChosenTime = time_to_reset(TimeToReset),
-            ?LOG_DEBUG(#{
-                message => "Rate limit would be exceeded",
-                time_to_reset => TimeToReset,
-                time_to_sleep => ChosenTime,
-                scope => Scope,
-                key => Key,
-                pid => self()
-            }),
-            timer:sleep(ChosenTime),
-            rate_limit(Scope, Key)
-    end.
-
-time_to_reset(I) when I < 2 ->
-    rand:uniform(30);
-time_to_reset(N) ->
-    N.
+    folio_throttle:rate_limit(?MODULE, key).

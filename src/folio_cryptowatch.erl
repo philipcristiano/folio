@@ -24,8 +24,7 @@
 }.
 
 folio_init() ->
-    ok = throttle:setup(?MODULE, 1, 5000),
-    ok.
+    folio_throttle:setup(?MODULE, 1, 5000).
 
 -spec get_assets() -> {ok, list(asset())}.
 get_assets() ->
@@ -128,20 +127,7 @@ request(PathQS, Opts = #{attempts_remaining := AR}) ->
     end.
 
 rate_limit() ->
-    case throttle:check(?MODULE, key) of
-        {ok, _RemainingAttempts, _TimeToReset} ->
-            ok;
-        {limit_exceeded, _, TimeToReset} ->
-            ChosenTime = time_to_reset(TimeToReset),
-            ?LOG_DEBUG(#{
-                message => "Rate limit would be exceeded",
-                time_to_reset => TimeToReset,
-                time_to_sleep => ChosenTime,
-                pid => self()
-            }),
-            timer:sleep(ChosenTime),
-            rate_limit()
-    end.
+    folio_throttle:rate_limit(?MODULE, key).
 
 log_api_info(Path, #{<<"allowance">> := A}) ->
     Msg = #{
@@ -152,11 +138,6 @@ log_api_info(Path, #{<<"allowance">> := A}) ->
     ?LOG_INFO(Line);
 log_api_info(_Path, _) ->
     ok.
-
-time_to_reset(I) when I < 2 ->
-    rand:uniform(30);
-time_to_reset(N) ->
-    N.
 
 map_keys_to_atoms(M) ->
     maps:fold(

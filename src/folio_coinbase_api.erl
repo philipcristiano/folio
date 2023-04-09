@@ -31,9 +31,9 @@ add(IntegrationID, #{key := K, secret := S}) ->
 
 user(State) ->
     case request(<<"/v2/user">>, State) of
-        {ok, Resp, State1} ->
+        {ok, Resp} ->
             User = maps:get(<<"data">>, Resp),
-            {ok, User, State1};
+            {ok, User, State};
         Else ->
             Else
     end.
@@ -45,7 +45,7 @@ accounts_init(_Integration = #{id := IntegrationID}) ->
     }.
 
 accounts(State = #{next_uri := NextURI}) ->
-    {ok, AccountResp, State1} = request(NextURI, State),
+    {ok, AccountResp} = request(NextURI, State),
 
     Accounts = maps:get(<<"data">>, AccountResp),
 
@@ -59,9 +59,9 @@ accounts(State = #{next_uri := NextURI}) ->
             _ -> incomplete
         end,
 
-    State2 = State1#{next_uri => NextNextURI},
+    State1 = State#{next_uri => NextNextURI},
     FAccounts = lists:map(fun cb_to_account/1, Accounts),
-    {Complete, FAccounts, State2}.
+    {Complete, FAccounts, State1}.
 
 account_transactions_init(#{id := IntegrationID}, #{id := AccountID}) ->
     State = #{
@@ -72,7 +72,7 @@ account_transactions_init(#{id := IntegrationID}, #{id := AccountID}) ->
     State.
 
 account_transactions(State = #{next_uri := NextURI}) ->
-    {ok, Resp, State1} = request(NextURI, State),
+    {ok, Resp} = request(NextURI, State),
     Data = maps:get(<<"data">>, Resp),
 
     Pagination = maps:get(<<"pagination">>, Resp, #{}),
@@ -85,8 +85,8 @@ account_transactions(State = #{next_uri := NextURI}) ->
             _ -> incomplete
         end,
     FolioTXs = lists:flatten(lists:map(fun cb_to_tx/1, Data)),
-    State2 = State1#{next_uri => NextNextURI},
-    {Complete, FolioTXs, State2}.
+    State1 = State#{next_uri => NextNextURI},
+    {Complete, FolioTXs, State1}.
 
 cb_to_account(#{
     <<"id">> := SourceID,
@@ -189,11 +189,11 @@ coinbase_credentials(_State = #{integration_id := ID}) ->
     #{key := Key, secret := Secret} = folio_credentials_store:get_credentials(ID),
     {Key, Secret}.
 
--spec request(binary(), any()) -> {ok, map(), any()} | {error, binary(), any()}.
+-spec request(binary(), any()) -> {ok, map()} | {error, binary()}.
 request(PathQS, State) ->
     request(PathQS, #{attempts_remaining => 3}, State).
 
--spec request(binary(), map(), any()) -> {ok, map(), any()} | {error, binary(), any()}.
+-spec request(binary(), map(), any()) -> {ok, map()} | {error, binary()}.
 request(PathQS, #{attempts_remaining := AR}, State) when AR =< 0 ->
     ?LOG_INFO(#{
         message => "Coinbase request failed",

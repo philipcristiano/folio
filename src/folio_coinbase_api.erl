@@ -176,6 +176,7 @@ cb_to_tx(
         maps:merge(Partial, #{
             datetime => DT,
             source_id => SourceID,
+            line => <<"">>,
             amount => decimal:abs(folio_math:to_decimal(Amount)),
             symbol => Symbol,
             type => undefined

@@ -155,6 +155,7 @@ schema() ->
                 #{name => "integration_id", type => "uuid"},
                 #{name => "external_id", type => "text"},
                 #{name => "source_id", type => "text"},
+                #{name => "line", type => "text"},
                 #{name => "direction", type => "text"},
                 #{name => "timestamp", type => "timestamp"},
                 #{name => "symbol", type => "text"},
@@ -162,7 +163,7 @@ schema() ->
                 #{name => "type", type => "text"},
                 #{name => "description", type => "text"}
             ],
-            primary_key => ["integration_id", "external_id", "source_id"]
+            primary_key => ["integration_id", "external_id", "source_id", "line"]
         }
     ].
 

@@ -176,6 +176,7 @@ transfer_to_txs(
     [
         #{
             source_id => TXHash,
+            line => <<"">>,
             datetime => qdate:to_date(trunc(TimestampMS / 1000)),
             direction => Direction,
             symbol => Symbol,

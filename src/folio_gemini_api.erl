@@ -18,7 +18,7 @@
 
 folio_init() ->
     ok = throttle:setup(?MODULE, 1, per_second),
-    ok = throttle:setup(?TRANSFERS_THROTTLE_KEY, 1, 5000),
+    ok = throttle:setup(?TRANSFERS_THROTTLE_KEY, 1, 7500),
     ok.
 
 setup_properties() ->
@@ -78,31 +78,44 @@ accounts(State = #{sync_exchange := false, sync_earn := false}) ->
 account_transactions_init(#{id := IntegrationID}, #{id := FolioID}) ->
     [AccountTypeBin, ID] = binary:split(FolioID, <<".">>),
     AccountType = erlang:binary_to_atom(AccountTypeBin),
+    EarnSync = #{
+        type => earn,
+        request_args => #{
+            account => ID,
+            until => os:system_time(millisecond),
+            sortAsc => false,
+            limit => 500
+        }
+    },
+    TransfersSync = #{
+        type => transfers,
+        request_args => #{
+            account => ID,
+            timestamp => 0,
+            limit_transfers => 50
+        }
+    },
+    TradesSync = #{
+        type => trades,
+        request_args => #{
+            account => ID,
+            timestamp => 0,
+            limit_trades => 500
+        }
+    },
     State =
         case AccountType of
             earn ->
                 #{
-                    earn_request_args => #{
-                        account => ID,
-                        until => os:system_time(millisecond),
-                        sortAsc => false,
-                        limit => 500
-                    }
+                    to_sync => [EarnSync#{tx_filter => fun predicate_any/1}]
                 };
             exchange ->
                 #{
-                    sync_trades => true,
-                    sync_transfers => true,
-                    trades_request_args => #{
-                        account => ID,
-                        timestamp => 0,
-                        limit_trades => 500
-                    },
-                    transfers_request_args => #{
-                        account => ID,
-                        timestamp => 0,
-                        limit_transfers => 50
-                    }
+                    to_sync => [
+                        TradesSync,
+                        TransfersSync,
+                        EarnSync#{tx_filter => fun predicate_earn_tx_for_eachange/1}
+                    ]
                 }
         end,
     State1 = State#{
@@ -113,17 +126,17 @@ account_transactions_init(#{id := IntegrationID}, #{id := FolioID}) ->
     State1.
 
 account_transactions(
-    State = #{account_type := exchange, sync_trades := false, sync_transfers := false}
+    State = #{to_sync := []}
 ) ->
     {complete, [], State};
 account_transactions(
-    State = #{account_type := exchange, trades_request_args := RequestArgs, sync_trades := true}
+    State = #{to_sync := [#{type := trades, request_args := RequestArgs} = H | RestToSync]}
 ) ->
     Path = <<"/v1/mytrades">>,
     {ok, _, Transactions, State1} = request(
         Path, RequestArgs, State
     ),
-    ?LOG_INFO(#{
+    ?LOG_DEBUG(#{
         message => "Gemini API Transactions",
         transactions => Transactions,
         request_args => RequestArgs
@@ -132,28 +145,27 @@ account_transactions(
     TXLists = lists:map(fun(I) -> trades_to_folio_txs(I, State1) end, Transactions),
     TXs = lists:flatten(TXLists),
 
-    {SyncTrades, NextTimestamp} =
+    ToSync =
         case TXs of
             [] ->
-                {false, undefined};
+                RestToSync;
             _ ->
                 TXTSs = lists:map(fun(#{<<"timestamp">> := TS}) -> TS end, Transactions),
                 MaxTS = lists:max(TXTSs),
-                {true, MaxTS + 1}
+                NextRequestArgs = RequestArgs#{timestamp => MaxTS + 1},
+                [H#{request_args => NextRequestArgs} | RestToSync]
         end,
 
-    NextRequestArgs = RequestArgs#{timestamp => NextTimestamp},
-    {incomplete, TXs, State1#{trades_request_args => NextRequestArgs, sync_trades => SyncTrades}};
+    {incomplete, TXs, State1#{to_sync => ToSync}};
 account_transactions(
-    State = #{
-        account_type := exchange, transfers_request_args := RequestArgs, sync_transfers := true
-    }
+    State = #{to_sync := [#{type := transfers, request_args := RequestArgs} = H | RestToSync]}
 ) ->
     Path = <<"/v1/transfers">>,
+    folio_throttle:rate_limit(?TRANSFERS_THROTTLE_KEY, key),
     {ok, _, Transactions, State1} = request(
         Path, RequestArgs, State
     ),
-    ?LOG_INFO(#{
+    ?LOG_DEBUG(#{
         message => "Gemini API Transfers",
         transactions => Transactions,
         request_args => RequestArgs
@@ -162,21 +174,25 @@ account_transactions(
     TXLists = lists:map(fun(I) -> transfers_to_folio_txs(I, State1) end, Transactions),
     TXs = lists:flatten(TXLists),
 
-    {SyncTransfers, NextTimestamp} =
+    ToSync =
         case TXs of
             [] ->
-                {false, undefined};
+                RestToSync;
             _ ->
                 TXTSs = lists:map(fun(#{<<"timestampms">> := TS}) -> TS end, Transactions),
                 MaxTS = lists:max(TXTSs),
-                {true, MaxTS + 1}
+                NextRequestArgs = RequestArgs#{timestamp => MaxTS + 1},
+                [H#{request_args => NextRequestArgs} | RestToSync]
         end,
 
-    NextRequestArgs = RequestArgs#{timestamp => NextTimestamp},
-    {incomplete, TXs, State1#{
-        transfers_request_args => NextRequestArgs, sync_transfers => SyncTransfers
-    }};
-account_transactions(State = #{account_type := earn, earn_request_args := RequestArgs}) ->
+    {incomplete, TXs, State1#{to_sync => ToSync}};
+account_transactions(
+    State = #{
+        to_sync := [
+            #{type := earn, request_args := RequestArgs, tx_filter := TXFilterFun} = H | RestToSync
+        ]
+    }
+) ->
     Path = <<"/v1/earn/history">>,
     {ok, _, Resp, State1} = request(Path, RequestArgs, State),
 
@@ -186,20 +202,21 @@ account_transactions(State = #{account_type := earn, earn_request_args := Reques
             [#{<<"transactions">> := Transactions}] -> Transactions
         end,
 
-    TXLists = lists:map(fun(I) -> earn_to_folio_txs(I, State1) end, RespTransactions),
+    FilteredTransactions = lists:filter(TXFilterFun, RespTransactions),
+    TXLists = lists:map(fun(I) -> earn_to_folio_txs(I, State1) end, FilteredTransactions),
     TXs = lists:flatten(TXLists),
 
-    {Complete, NextUntil} =
+    ToSync =
         case RespTransactions of
             [] ->
-                {complete, undefined};
+                RestToSync;
             _ ->
                 TXDTs = lists:map(fun(#{<<"dateTime">> := DT}) -> DT end, RespTransactions),
                 MinDTMinus1 = lists:min(TXDTs) - 1,
-                {incomplete, MinDTMinus1}
+                NextRequestArgs = RequestArgs#{until => MinDTMinus1},
+                [H#{request_args => NextRequestArgs} | RestToSync]
         end,
-    NextRequestArgs = RequestArgs#{until => NextUntil},
-    {Complete, TXs, State1#{earn_request_args => NextRequestArgs}}.
+    {incomplete, TXs, State1#{to_sync => ToSync}}.
 
 to_folio_balance(#{
     <<"type">> := <<"exchange">>,
@@ -299,6 +316,11 @@ trades_to_folio_txs(
 tradepair_to_currency(<<Left:3/binary, Right:3/binary>>) ->
     {Left, Right}.
 
+earn_tx_direction(in, earn) -> in;
+earn_tx_direction(out, earn) -> out;
+earn_tx_direction(in, exchange) -> out;
+earn_tx_direction(out, exchange) -> in.
+
 earn_to_folio_txs(
     #{
         <<"amount">> := AmountFloat,
@@ -307,7 +329,7 @@ earn_to_folio_txs(
         <<"transactionType">> := Type,
         <<"dateTime">> := DT
     },
-    #{account_type := earn}
+    #{account_type := AccountType}
 ) ->
     Default = #{
         source_id => ID,
@@ -315,41 +337,42 @@ earn_to_folio_txs(
         symbol => Currency,
         amount => folio_math:to_decimal(AmountFloat)
     },
+
     TypeProps =
         case Type of
-            T = <<"Deposit">> ->
+            <<"Deposit">> ->
                 #{
-                    direction => in,
+                    direction => earn_tx_direction(in, AccountType),
                     type => undefined,
-                    description => T
+                    description => <<"Earn Deposit">>
                 };
-            T = <<"Redeem">> ->
+            <<"Redeem">> ->
                 #{
-                    direction => out,
+                    direction => earn_tx_direction(out, AccountType),
                     type => undefined,
-                    description => T
+                    description => <<"Earn Redeem">>
                 };
             T = <<"AdminRedeem">> ->
                 #{
-                    direction => out,
+                    direction => earn_tx_direction(out, AccountType),
                     type => undefined,
                     description => T
                 };
             T = <<"AdminDebitAdjustment">> ->
                 #{
-                    direction => out,
+                    direction => earn_tx_direction(out, AccountType),
                     type => undefined,
                     description => T
                 };
             T = <<"AdminCreditAdjustment">> ->
                 #{
-                    direction => in,
+                    direction => earn_tx_direction(in, AccountType),
                     type => undefined,
                     description => T
                 };
             T = <<"Interest">> ->
                 #{
-                    direction => in,
+                    direction => earn_tx_direction(in, AccountType),
                     type => undefined,
                     description => T
                 }
@@ -376,14 +399,18 @@ request(PathQS, Args, State) ->
     {ok, list(), map() | list(), any()} | {error, binary(), any()}.
 request(PathQS, _Args, #{attempts_remaining := AR}, State) when AR =< 0 ->
     ?LOG_INFO(#{
-        message => "Coinbase request failed",
+        message => "Gemini request failed",
         path => PathQS
     }),
-    {error, "No more attemps remaining", State};
+    {error, "No more attempts remaining", State};
 request(PathQS, Args, Opts = #{attempts_remaining := AR}, State) ->
     BasePath = <<"https://api.gemini.com">>,
     Url = <<BasePath/binary, PathQS/binary>>,
 
+    ?LOG_DEBUG(#{
+        message => "Gemini http request",
+        url => Url
+    }),
     rate_limit(),
     Headers = sign(PathQS, Args, State),
 
@@ -422,3 +449,10 @@ sign(PathQS, ArgMap, State) ->
 
 rate_limit() ->
     folio_throttle:rate_limit(?MODULE, key).
+
+predicate_any(_) -> true.
+
+predicate_earn_tx_for_eachange(#{
+    <<"transactionType">> := Type
+}) ->
+    lists:member(Type, [<<"Deposit">>, <<"Redeem">>]).

@@ -67,9 +67,8 @@ start_link() ->
 init([]) ->
     {ok, _TRef} = start_timer(),
 
-    % Only auto-sync things if this is deployed
-    sync_assets(),
-    sync_asset_prices(),
+    sync_assets_if_none(),
+    sync_asset_prices_if_not_recent(),
     {ok, #state{}}.
 
 sync_assets() ->
@@ -77,6 +76,26 @@ sync_assets() ->
 
 sync_asset_prices() ->
     gen_server:cast(?MODULE, sync_asset_prices).
+
+sync_assets_if_none() ->
+    C = fdb:checkout(),
+    {ok, Assets} = fdb:select(C, assets, #{}, [{limit, 1}]),
+    fdb:checkin(C),
+    case Assets of
+        [] -> sync_assets();
+        _ -> ?LOG_INFO(#{message => "Assets exist, not syncing on start"})
+    end.
+
+sync_asset_prices_if_not_recent() ->
+    C = fdb:checkout(),
+    Now = os:system_time(second),
+    Recent = qdate:to_date(qdate:add_minutes(-15, Now)),
+    {ok, Assets} = fdb:select(C, asset_prices, #{timestamp => {'>', Recent}}, [{limit, 1}]),
+    fdb:checkin(C),
+    case Assets of
+        [] -> sync_asset_prices();
+        _ -> ?LOG_INFO(#{message => "Recent asset prices found, not syncing on start"})
+    end.
 
 asset_for_symbol(SymBin) when is_binary(SymBin) ->
     Sym = string:lowercase(SymBin),
@@ -270,4 +289,5 @@ write_asset_price(C, DT, #{external_id := ID}, #{currency := Cu, amount := A, sy
     ok.
 
 start_timer() ->
-    timer:apply_interval(timer:minutes(51), ?MODULE, sync_asset_prices, []).
+    timer:apply_interval(timer:minutes(51), ?MODULE, sync_asset_prices, []),
+    timer:apply_interval(timer:minutes(600), ?MODULE, sync_assets, []).

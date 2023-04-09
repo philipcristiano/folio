@@ -123,6 +123,7 @@ request(Method, URL, Headers, ReqBody, ErrorFun) ->
                 {error, timeout} ->
                     ErrorFun();
                 {ok, RespCode, RespHeaders, Body} ->
+                    ?set_attributes([{<<"https.status_code">>, RespCode}]),
                     case jsx:is_json(Body) of
                         true -> {ok, jsx:decode(Body, [return_maps])};
                         false -> {error, Body}

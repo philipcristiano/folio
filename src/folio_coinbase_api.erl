@@ -31,7 +31,7 @@ add(IntegrationID, #{key := K, secret := S}) ->
 
 user(State) ->
     case request(<<"/v2/user">>, State) of
-        {ok, Resp} ->
+        {ok, _, _, Resp} ->
             User = maps:get(<<"data">>, Resp),
             {ok, User, State};
         Else ->
@@ -45,7 +45,7 @@ accounts_init(_Integration = #{id := IntegrationID}) ->
     }.
 
 accounts(State = #{next_uri := NextURI}) ->
-    {ok, AccountResp} = request(NextURI, State),
+    {ok, _, _, AccountResp} = request(NextURI, State),
 
     Accounts = maps:get(<<"data">>, AccountResp),
 
@@ -72,7 +72,7 @@ account_transactions_init(#{id := IntegrationID}, #{id := AccountID}) ->
     State.
 
 account_transactions(State = #{next_uri := NextURI}) ->
-    {ok, Resp} = request(NextURI, State),
+    {ok, _, _, Resp} = request(NextURI, State),
     Data = maps:get(<<"data">>, Resp),
 
     Pagination = maps:get(<<"pagination">>, Resp, #{}),
@@ -189,11 +189,9 @@ coinbase_credentials(_State = #{integration_id := ID}) ->
     #{key := Key, secret := Secret} = folio_credentials_store:get_credentials(ID),
     {Key, Secret}.
 
--spec request(binary(), any()) -> {ok, map()} | {error, binary()}.
 request(PathQS, State) ->
     request(PathQS, #{attempts_remaining => 3}, State).
 
--spec request(binary(), map(), any()) -> {ok, map()} | {error, binary()}.
 request(PathQS, #{attempts_remaining := AR}, State) when AR =< 0 ->
     ?LOG_INFO(#{
         message => "Coinbase request failed",

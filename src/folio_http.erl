@@ -1,5 +1,6 @@
 -module(folio_http).
 
+-include_lib("kernel/include/logger.hrl").
 -include_lib("opentelemetry_api/include/otel_tracer.hrl").
 
 -export([
@@ -109,7 +110,13 @@ path_spec_for_name(Name) ->
         schema => #{type => string}
     }.
 
+-spec request(get | post, binary(), list(), any(), fun()) ->
+    {ok, integer(), list(), term()} | {error, binary()}.
 request(Method, URL, Headers, ReqBody, ErrorFun) ->
+    ?LOG_DEBUG(#{
+        message => http_request,
+        url => URL
+    }),
     ?with_span(
         <<"hackney request">>,
         #{
@@ -120,12 +127,14 @@ request(Method, URL, Headers, ReqBody, ErrorFun) ->
         },
         fun(_Ctx) ->
             case hackney:request(Method, URL, Headers, ReqBody, [with_body]) of
+                {error, closed} ->
+                    ErrorFun();
                 {error, timeout} ->
                     ErrorFun();
                 {ok, RespCode, RespHeaders, Body} ->
                     ?set_attributes([{<<"https.status_code">>, RespCode}]),
                     case jsx:is_json(Body) of
-                        true -> {ok, jsx:decode(Body, [return_maps])};
+                        true -> {ok, RespCode, RespHeaders, jsx:decode(Body, [return_maps])};
                         false -> {error, Body}
                     end
             end

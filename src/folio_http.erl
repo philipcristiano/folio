@@ -112,7 +112,12 @@ path_spec_for_name(Name) ->
 request(Method, URL, Headers, ReqBody, ErrorFun) ->
     ?with_span(
         <<"hackney request">>,
-        #{attributes => #{}},
+        #{
+            attributes => #{
+                <<"http.method">> => Method,
+                <<"http.url">> => URL
+            }
+        },
         fun(_Ctx) ->
             case hackney:request(Method, URL, Headers, ReqBody, [with_body]) of
                 {error, timeout} ->

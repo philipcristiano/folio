@@ -27,7 +27,7 @@
     stop/0
 ]).
 
--export([sync/0, sync/1]).
+-export([ping/0, sync/0, sync/1]).
 
 -type pid_info() ::
     {integration, folio_integration:integration()}
@@ -67,6 +67,9 @@ init([]) ->
     {ok, _TRef} = start_timer(),
     {ok, #{pid_info_map => #{}}}.
 
+ping() ->
+    gen_server:call(?MODULE, ping).
+
 stop() ->
     gen_server:call(?MODULE, stop).
 
@@ -101,6 +104,9 @@ register_pid(Pid, Info) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(ping, _From, State) ->
+    Reply = pong,
+    {reply, Reply, State};
 handle_call(stop, _From, State) ->
     Reply = ok,
     {stop, normal, Reply, State};

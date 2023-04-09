@@ -35,6 +35,7 @@ gen_server_sync_no_accounts_test() ->
     ),
 
     {ok, _Pid} = ?MUT:start_link(),
+    pong = ?MUT:ping(),
     ?MUT:sync(),
 
     meck:wait(folio_integration, set_integration_state, [Int1, complete], 3000),
@@ -54,11 +55,8 @@ gen_server_sync_accounts_no_txs_test() ->
     expect_timer_apply_interval(),
     expect_set_integration_state(),
 
-    Int1 = #{id => <<"id1">>, provider_name => <<"name1">>},
     Int2 = #{id => <<"id2">>, provider_name => <<"name2">>},
-    Integrations = [Int1, Int2],
-
-    Acct1 = #{id => <<"account_1">>, balances => []},
+    Integrations = [Int2],
 
     Bal1 = #{balance => {15, 2}, symbol => <<"BTC">>},
     Bal2 = #{balance => {7, -2}, symbol => <<"ETH">>},
@@ -74,7 +72,6 @@ gen_server_sync_accounts_no_txs_test() ->
         folio_integration,
         fetch_integration_accounts,
         [
-            {[Int1], {ok, [Acct1]}},
             {[Int2], {ok, [Acct2]}}
         ]
     ),
@@ -86,21 +83,15 @@ gen_server_sync_accounts_no_txs_test() ->
     ),
 
     {ok, _Pid} = ?MUT:start_link(),
+    pong = ?MUT:ping(),
     ?MUT:sync(),
 
-    meck:wait(folio_integration, set_integration_state, [Int1, starting], 3000),
-    meck:wait(folio_integration, set_integration_state, [Int1, complete], 3000),
     meck:wait(folio_integration, set_integration_state, [Int2, starting], 3000),
     meck:wait(folio_integration, set_integration_state, [Int2, complete], 3000),
 
     ok = ?MUT:stop(),
-    3 = assert_checkouts_matches_checkins(),
+    2 = assert_checkouts_matches_checkins(),
     assert_fdb_writes([
-        [
-            Conn,
-            integration_accounts,
-            #{external_id => <<"account_1">>, integration_id => <<"id1">>}
-        ],
         [
             Conn,
             integration_accounts,

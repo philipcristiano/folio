@@ -209,15 +209,8 @@ request(PathQS, Opts = #{attempts_remaining := AR}, State) ->
     % signing errors if the request is delayed too long
     Headers = coinbase_sign(get, PathQS, State),
 
-    case hackney:request(get, Url, Headers, [], [with_body]) of
-        {error, timeout} ->
-            request(PathQS, Opts#{attempts_remaining => AR - 1}, State);
-        {ok, _RespCode, _RespHeaders, Body} ->
-            case jsx:is_json(Body) of
-                true -> {ok, jsx:decode(Body, [return_maps]), State};
-                false -> {error, Body, State}
-            end
-    end.
+    EF = fun() -> request(PathQS, Opts#{attempts_remaining => AR - 1}, State) end,
+    folio_http:request(get, Url, Headers, [], EF).
 
 coinbase_sign(get, Path, State) ->
     Now = os:system_time(second),

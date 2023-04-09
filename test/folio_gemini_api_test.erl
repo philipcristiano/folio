@@ -47,9 +47,9 @@ accounts_test() ->
         hackney,
         request,
         [
-            {[post, URLAccounts, '_', <<>>, [with_body]], {ok, 200, [], AccountResp}},
-            {[post, URLBalances, '_', <<>>, [with_body]], {ok, 200, [], BalancesResp}},
-            {[post, URLEarnBalances, '_', <<>>, [with_body]], {ok, 200, [], EarnBalancesResp}}
+            {[post, URLAccounts, '_', [], [with_body]], {ok, 200, [], AccountResp}},
+            {[post, URLBalances, '_', [], [with_body]], {ok, 200, [], BalancesResp}},
+            {[post, URLEarnBalances, '_', [], [with_body]], {ok, 200, [], EarnBalancesResp}}
         ]
     ),
 

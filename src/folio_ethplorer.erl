@@ -224,15 +224,8 @@ request(PathQS, Opts = #{attempts_remaining := AR}) ->
         message => ethplorer_request,
         url => Url
     }),
-    case hackney:request(get, Url, Headers, [], [with_body]) of
-        {error, timeout} ->
-            request(PathQS, Opts#{attempts_remaining => AR - 1});
-        {ok, _RespCode, _RespHeaders, Body} ->
-            case jsx:is_json(Body) of
-                true -> {ok, jsx:decode(Body, [return_maps])};
-                false -> {error, Body}
-            end
-    end.
+    EF = fun() -> request(PathQS, Opts#{attempts_remaining => AR - 1}) end,
+    folio_http:request(get, Url, Headers, [], EF).
 
 rate_limit() ->
     folio_throttle:rate_limit(?MODULE, key).

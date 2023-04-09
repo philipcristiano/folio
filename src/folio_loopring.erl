@@ -202,19 +202,19 @@ request_account_transfers(AccountID, _StartInt, State) ->
 
 -spec request(binary()) -> {ok, map() | list()} | {error, binary()}.
 request(PathQS) ->
-    request(PathQS, #{}, #{attempts_remaining => 3}).
+    request(PathQS, #{}).
 
 request(PathQS, State) ->
-    request(PathQS, State, #{attempts_remaining => 3}).
+    request(PathQS, #{attempts_remaining => 3}, State).
 
 -spec request(binary(), any(), map()) -> {ok, map() | list()} | {error, binary()}.
-request(PathQS, _State, #{attempts_remaining := AR}) when AR =< 0 ->
+request(PathQS, #{attempts_remaining := AR}, _State) when AR =< 0 ->
     ?LOG_INFO(#{
         message => "Loopring request failed",
         path => PathQS
     }),
     {error, "No more attempts remaining"};
-request(PathQS, State, Opts = #{attempts_remaining := AR}) ->
+request(PathQS, Opts = #{attempts_remaining := AR}, State) ->
     BasePath = <<"https://api3.loopring.io">>,
     Url = <<BasePath/binary, PathQS/binary>>,
 
@@ -225,15 +225,8 @@ request(PathQS, State, Opts = #{attempts_remaining := AR}) ->
         message => loopring_request,
         url => Url
     }),
-    case hackney:request(get, Url, Headers, [], [with_body]) of
-        {error, timeout} ->
-            request(PathQS, State, Opts#{attempts_remaining => AR - 1});
-        {ok, _RespCode, _RespHeaders, Body} ->
-            case jsx:is_json(Body) of
-                true -> {ok, jsx:decode(Body, [return_maps])};
-                false -> {error, Body}
-            end
-    end.
+    EF = fun() -> request(PathQS, Opts#{attempts_remaining => AR - 1}, State) end,
+    folio_http:request(get, Url, Headers, [], EF).
 
 state_to_headers(#{integration_id := IID}) ->
     #{key := Key} = folio_credentials_store:get_credentials(IID),

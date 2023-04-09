@@ -1,5 +1,7 @@
 -module(folio_http).
 
+-include_lib("opentelemetry_api/include/otel_tracer.hrl").
+
 -export([
     bad_request/2,
     make_string_property/1,
@@ -8,7 +10,8 @@
     make_get/3,
     make_json_post/2,
     make_json_post/3,
-    path_spec_for_name/1
+    path_spec_for_name/1,
+    request/5
 ]).
 
 bad_request(Req, Message) ->
@@ -105,3 +108,20 @@ path_spec_for_name(Name) ->
         required => true,
         schema => #{type => string}
     }.
+
+request(Method, URL, Headers, ReqBody, ErrorFun) ->
+    ?with_span(
+        <<"hackney request">>,
+        #{attributes => #{}},
+        fun(_Ctx) ->
+            case hackney:request(Method, URL, Headers, ReqBody, [with_body]) of
+                {error, timeout} ->
+                    ErrorFun();
+                {ok, RespCode, RespHeaders, Body} ->
+                    case jsx:is_json(Body) of
+                        true -> {ok, jsx:decode(Body, [return_maps])};
+                        false -> {error, Body}
+                    end
+            end
+        end
+    ).

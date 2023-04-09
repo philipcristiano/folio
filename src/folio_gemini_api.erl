@@ -44,34 +44,34 @@ accounts_init(_Integration = #{id := IntegrationID}) ->
     }.
 
 accounts(State = #{get_account_list := true}) ->
-    {ok, _Headers, AccountResp, State1} = request(<<"/v1/account/list">>, State),
+    {ok, AccountResp} = request(<<"/v1/account/list">>, State),
     ToSyncLists = lists:map(
         fun(#{<<"account">> := Acct}) -> [{exchange, Acct}, {earn, Acct}] end, AccountResp
     ),
     ToSync = lists:flatten(ToSyncLists),
-    {incomplete, [], State1#{get_account_list => false, to_sync => ToSync}};
+    {incomplete, [], State#{get_account_list => false, to_sync => ToSync}};
 accounts(State = #{to_sync := []}) ->
     {complete, [], State};
 accounts(State = #{to_sync := [{exchange, GeminiAcct} | T]}) ->
     RequestArgs = #{account => GeminiAcct},
-    {ok, _Headers, BalanceResp, State1} = request(<<"/v1/balances">>, RequestArgs, State),
+    {ok, BalanceResp} = request(<<"/v1/balances">>, RequestArgs, State),
     FBalances = lists:map(fun to_folio_balance/1, BalanceResp),
     Acct = #{
         id => <<<<"exchange.">>/binary, GeminiAcct/binary>>,
         account => GeminiAcct,
         balances => FBalances
     },
-    {incomplete, [Acct], State1#{to_sync => T}};
+    {incomplete, [Acct], State#{to_sync => T}};
 accounts(State = #{to_sync := [{earn, GeminiAcct} | T]}) ->
     RequestArgs = #{account => GeminiAcct},
-    {ok, _Headers, BalanceResp, State1} = request(<<"/v1/balances/earn">>, RequestArgs, State),
+    {ok, BalanceResp} = request(<<"/v1/balances/earn">>, RequestArgs, State),
 
     FBalances = lists:map(fun to_folio_balance/1, BalanceResp),
     Acct = #{
         id => <<<<"earn.">>/binary, GeminiAcct/binary>>,
         balances => FBalances
     },
-    {incomplete, [Acct], State1#{to_sync => T}};
+    {incomplete, [Acct], State#{to_sync => T}};
 accounts(State = #{sync_exchange := false, sync_earn := false}) ->
     {complete, [], State}.
 
@@ -133,7 +133,7 @@ account_transactions(
     State = #{to_sync := [#{type := trades, request_args := RequestArgs} = H | RestToSync]}
 ) ->
     Path = <<"/v1/mytrades">>,
-    {ok, _, Transactions, State1} = request(
+    {ok, Transactions} = request(
         Path, RequestArgs, State
     ),
     ?LOG_DEBUG(#{
@@ -142,7 +142,7 @@ account_transactions(
         request_args => RequestArgs
     }),
 
-    TXLists = lists:map(fun(I) -> trades_to_folio_txs(I, State1) end, Transactions),
+    TXLists = lists:map(fun(I) -> trades_to_folio_txs(I, State) end, Transactions),
     TXs = lists:flatten(TXLists),
 
     ToSync =
@@ -156,13 +156,13 @@ account_transactions(
                 [H#{request_args => NextRequestArgs} | RestToSync]
         end,
 
-    {incomplete, TXs, State1#{to_sync => ToSync}};
+    {incomplete, TXs, State#{to_sync => ToSync}};
 account_transactions(
     State = #{to_sync := [#{type := transfers, request_args := RequestArgs} = H | RestToSync]}
 ) ->
     Path = <<"/v1/transfers">>,
     folio_throttle:rate_limit(?TRANSFERS_THROTTLE_KEY, key),
-    {ok, _, Transactions, State1} = request(
+    {ok, Transactions} = request(
         Path, RequestArgs, State
     ),
     ?LOG_DEBUG(#{
@@ -171,7 +171,7 @@ account_transactions(
         request_args => RequestArgs
     }),
 
-    TXLists = lists:map(fun(I) -> transfers_to_folio_txs(I, State1) end, Transactions),
+    TXLists = lists:map(fun(I) -> transfers_to_folio_txs(I, State) end, Transactions),
     TXs = lists:flatten(TXLists),
 
     ToSync =
@@ -185,7 +185,7 @@ account_transactions(
                 [H#{request_args => NextRequestArgs} | RestToSync]
         end,
 
-    {incomplete, TXs, State1#{to_sync => ToSync}};
+    {incomplete, TXs, State#{to_sync => ToSync}};
 account_transactions(
     State = #{
         to_sync := [
@@ -194,7 +194,7 @@ account_transactions(
     }
 ) ->
     Path = <<"/v1/earn/history">>,
-    {ok, _, Resp, State1} = request(Path, RequestArgs, State),
+    {ok, Resp} = request(Path, RequestArgs, State),
 
     RespTransactions =
         case Resp of
@@ -203,7 +203,7 @@ account_transactions(
         end,
 
     FilteredTransactions = lists:filter(TXFilterFun, RespTransactions),
-    TXLists = lists:map(fun(I) -> earn_to_folio_txs(I, State1) end, FilteredTransactions),
+    TXLists = lists:map(fun(I) -> earn_to_folio_txs(I, State) end, FilteredTransactions),
     TXs = lists:flatten(TXLists),
 
     ToSync =
@@ -216,7 +216,7 @@ account_transactions(
                 NextRequestArgs = RequestArgs#{until => MinDTMinus1},
                 [H#{request_args => NextRequestArgs} | RestToSync]
         end,
-    {incomplete, TXs, State1#{to_sync => ToSync}}.
+    {incomplete, TXs, State#{to_sync => ToSync}}.
 
 to_folio_balance(#{
     <<"type">> := <<"exchange">>,
@@ -386,17 +386,17 @@ credentials(_State = #{integration_id := ID}) ->
         ),
     C.
 
--spec request(binary(), any()) -> {ok, list(), map() | list(), any()} | {error, binary(), any()}.
+-spec request(binary(), any()) -> {ok, map() | list()} | {error, binary()}.
 request(PathQS, State) ->
     request(PathQS, #{}, #{attempts_remaining => 3}, State).
 
 -spec request(binary(), map(), any()) ->
-    {ok, list(), map() | list(), any()} | {error, binary(), any()}.
+    {ok, map() | list()} | {error, binary()}.
 request(PathQS, Args, State) ->
     request(PathQS, Args, #{attempts_remaining => 3}, State).
 
 -spec request(binary(), map(), map(), any()) ->
-    {ok, list(), map() | list(), any()} | {error, binary(), any()}.
+    {ok, map() | list()} | {error, binary()}.
 request(PathQS, _Args, #{attempts_remaining := AR}, State) when AR =< 0 ->
     ?LOG_INFO(#{
         message => "Gemini request failed",
@@ -414,15 +414,8 @@ request(PathQS, Args, Opts = #{attempts_remaining := AR}, State) ->
     rate_limit(),
     Headers = sign(PathQS, Args, State),
 
-    case hackney:request(post, Url, Headers, <<>>, [with_body]) of
-        {error, timeout} ->
-            request(PathQS, Args, Opts#{attempts_remaining => AR - 1}, State);
-        {ok, _RespCode, RespHeaders, Body} ->
-            case jsx:is_json(Body) of
-                true -> {ok, RespHeaders, jsx:decode(Body, [return_maps]), State};
-                false -> {error, Body, State}
-            end
-    end.
+    EF = fun() -> request(PathQS, Args, Opts#{attempts_remaining => AR - 1}, State) end,
+    folio_http:request(post, Url, Headers, [], EF).
 
 sign(PathQS, ArgMap, State) ->
     #{key := Key, secret := Secret} = credentials(State),

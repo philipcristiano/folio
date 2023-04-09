@@ -89,6 +89,7 @@ accounts_exchange_transactions_test() ->
     State0 = ?MUT:account_transactions_init(Integration, Account),
     TradesURL = url_for_path(<<"/v1/mytrades">>),
     TransferURL = url_for_path(<<"/v1/transfers">>),
+    EarnURL = url_for_path(<<"/v1/earn/history">>),
 
     ok = meck:expect(
         hackney,
@@ -99,6 +100,12 @@ accounts_exchange_transactions_test() ->
             Payload = jsx:decode(PayloadJSON, [return_maps]),
             % io:format("Payload ~p~n", [Payload]),
             case {ReqURL, Payload} of
+                {EarnURL, #{<<"sortAsc">> := false, <<"limit">> := 500, <<"until">> := 99000}} ->
+                    {ok, 200, [], json([])};
+                {EarnURL, #{<<"sortAsc">> := false, <<"limit">> := 500, <<"until">> := 100000}} ->
+                    {ok, 200, [], json([#{transactions => [earn_interest(99001)]}])};
+                {EarnURL, #{<<"sortAsc">> := false}} ->
+                    {ok, 200, [], json([#{transactions => [earn_deposit(100001)]}])};
                 {TradesURL, #{<<"timestamp">> := 21, <<"limit_trades">> := 500}} ->
                     {ok, 200, [], json([])};
                 {TradesURL, #{<<"timestamp">> := 11, <<"limit_trades">> := 500}} ->
@@ -120,7 +127,11 @@ accounts_exchange_transactions_test() ->
     {incomplete, [], State3} = ?MUT:account_transactions(State2),
     {incomplete, [TXDeposit], State4} = ?MUT:account_transactions(State3),
     {incomplete, [TXWithdrawal, TXReward], State5} = ?MUT:account_transactions(State4),
-    {incomplete, [], _State6} = ?MUT:account_transactions(State5),
+    {incomplete, [], State6} = ?MUT:account_transactions(State5),
+    {incomplete, [EarnDeposit], State7} = ?MUT:account_transactions(State6),
+    {incomplete, [], State8} = ?MUT:account_transactions(State7),
+    {incomplete, [], State9} = ?MUT:account_transactions(State8),
+    {complete, [], _State10} = ?MUT:account_transactions(State9),
 
     ?assertMatch(
         #{
@@ -207,6 +218,19 @@ accounts_exchange_transactions_test() ->
         TXReward
     ),
 
+    ?assertMatch(
+        #{
+            source_id := <<"GHIJK34L5">>,
+            datetime := {{1970, 1, 1}, {0, 1, 40}},
+            direction := out,
+            symbol := <<"BTC">>,
+            amount := {100000001, -8},
+            type := undefined,
+            description := <<"Earn Deposit">>
+        },
+        EarnDeposit
+    ),
+
     folio_meck:unload(?MOCK_MODS).
 
 accounts_earn_transactions_test() ->
@@ -243,9 +267,8 @@ accounts_earn_transactions_test() ->
 
     {incomplete, [TXDeposit], State1} = ?MUT:account_transactions(State0),
     {incomplete, [TXInterest], State2} = ?MUT:account_transactions(State1),
-    {complete, [], _State3} = ?MUT:account_transactions(
-        State2
-    ),
+    {incomplete, [], State3} = ?MUT:account_transactions(State2),
+    {complete, [], _State4} = ?MUT:account_transactions(State3),
 
     ?assertMatch(
         #{
@@ -255,7 +278,7 @@ accounts_earn_transactions_test() ->
             symbol := <<"BTC">>,
             amount := {100000001, -8},
             type := undefined,
-            description := <<"Deposit">>
+            description := <<"Earn Deposit">>
         },
         TXDeposit
     ),

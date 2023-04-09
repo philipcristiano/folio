@@ -135,7 +135,8 @@ accounts_exchange_transactions_test() ->
 
     ?assertMatch(
         #{
-            source_id := <<"107317526.BTC">>,
+            source_id := <<"107317526">>,
+            line := <<"BTC">>,
             datetime := {{1970, 1, 1}, {0, 0, 10}},
             direction := in,
             symbol := <<"BTC">>,
@@ -147,7 +148,8 @@ accounts_exchange_transactions_test() ->
     ),
     ?assertMatch(
         #{
-            source_id := <<"107317526.USD">>,
+            source_id := <<"107317526">>,
+            line := <<"USD">>,
             datetime := {{1970, 1, 1}, {0, 0, 10}},
             direction := out,
             symbol := <<"USD">>,
@@ -159,7 +161,8 @@ accounts_exchange_transactions_test() ->
     ),
     ?assertMatch(
         #{
-            source_id := <<"107317527.BTC">>,
+            source_id := <<"107317527">>,
+            line := <<"BTC">>,
             datetime := {{1970, 1, 1}, {0, 0, 20}},
             direction := out,
             symbol := <<"BTC">>,
@@ -171,7 +174,8 @@ accounts_exchange_transactions_test() ->
     ),
     ?assertMatch(
         #{
-            source_id := <<"107317527.USD">>,
+            source_id := <<"107317527">>,
+            line := <<"USD">>,
             datetime := {{1970, 1, 1}, {0, 0, 20}},
             direction := in,
             symbol := <<"USD">>,
@@ -183,7 +187,8 @@ accounts_exchange_transactions_test() ->
     ),
     ?assertMatch(
         #{
-            source_id := <<"transfers.320033681">>,
+            source_id := <<"320033681">>,
+            line := <<"">>,
             datetime := {{1970, 1, 1}, {0, 0, 10}},
             direction := in,
             symbol := <<"USD">>,
@@ -195,7 +200,8 @@ accounts_exchange_transactions_test() ->
     ),
     ?assertMatch(
         #{
-            source_id := <<"transfers.320033682">>,
+            source_id := <<"320033682">>,
+            line := <<"">>,
             datetime := {{1970, 1, 1}, {0, 0, 20}},
             direction := out,
             symbol := <<"USD">>,
@@ -207,7 +213,8 @@ accounts_exchange_transactions_test() ->
     ),
     ?assertMatch(
         #{
-            source_id := <<"transfers.320033683">>,
+            source_id := <<"320033683">>,
+            line := <<"">>,
             datetime := {{1970, 1, 1}, {0, 0, 20}},
             direction := in,
             symbol := <<"USD">>,
@@ -221,6 +228,7 @@ accounts_exchange_transactions_test() ->
     ?assertMatch(
         #{
             source_id := <<"GHIJK34L5">>,
+            line := <<"">>,
             datetime := {{1970, 1, 1}, {0, 1, 40}},
             direction := out,
             symbol := <<"BTC">>,

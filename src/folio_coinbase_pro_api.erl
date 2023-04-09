@@ -124,6 +124,7 @@ cb_to_txs(
         end,
     #{
         source_id => LedgerID,
+        line => <<"">>,
         datetime => qdate:to_date(CreatedAt),
         direction => Direction,
         symbol => Currency,
@@ -150,6 +151,7 @@ cb_to_txs(
         end,
     #{
         source_id => LedgerID,
+        line => <<"">>,
         datetime => qdate:to_date(CreatedAt),
         direction => Direction,
         symbol => Currency,
@@ -171,6 +173,7 @@ cb_to_txs(
 ) ->
     #{
         source_id => LedgerID,
+        line => <<"">>,
         datetime => qdate:to_date(CreatedAt),
         direction => out,
         symbol => Currency,
@@ -199,6 +202,7 @@ cb_to_txs(
         end,
     #{
         source_id => LedgerID,
+        line => <<"">>,
         datetime => qdate:to_date(CreatedAt),
         direction => Direction,
         symbol => Currency,
@@ -224,6 +228,7 @@ cb_to_txs(
         end,
     #{
         source_id => LedgerID,
+        line => <<"">>,
         datetime => qdate:to_date(CreatedAt),
         direction => Direction,
         symbol => Currency,

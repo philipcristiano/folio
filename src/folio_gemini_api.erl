@@ -253,11 +253,11 @@ transfers_to_folio_txs(
     Amount = folio_math:to_decimal(AmountBin),
 
     ID = erlang:integer_to_binary(IDInt),
-    SourceID = <<<<"transfers.">>/binary, ID/binary>>,
     Description = <<Type/binary, <<" ">>/binary, Status/binary>>,
 
     TX = #{
-        source_id => SourceID,
+        source_id => ID,
+        line => <<"">>,
         datetime => qdate:to_date(trunc(TSMS / 1000)),
         symbol => Currency,
         type => undefined,
@@ -279,8 +279,6 @@ trades_to_folio_txs(
 ) ->
     {Left, Right} = tradepair_to_currency(TradePair),
     IDB = erlang:integer_to_binary(ID),
-    LeftID = <<IDB/binary, <<".">>/binary, Left/binary>>,
-    RightID = <<IDB/binary, <<".">>/binary, Right/binary>>,
     Amount = folio_math:to_decimal(AmountBin),
     Price = folio_math:to_decimal(PriceBin),
 
@@ -293,7 +291,8 @@ trades_to_folio_txs(
         end,
 
     LeftTX = #{
-        source_id => LeftID,
+        source_id => IDB,
+        line => Left,
         datetime => qdate:to_date(TS),
         symbol => Left,
         type => undefined,
@@ -302,7 +301,8 @@ trades_to_folio_txs(
         amount => Amount
     },
     RightTX = #{
-        source_id => RightID,
+        source_id => IDB,
+        line => Right,
         datetime => qdate:to_date(TS),
         symbol => Right,
         direction => RightDir,
@@ -333,6 +333,7 @@ earn_to_folio_txs(
 ) ->
     Default = #{
         source_id => ID,
+        line => <<"">>,
         datetime => qdate:to_date(trunc(DT / 1000)),
         symbol => Currency,
         amount => folio_math:to_decimal(AmountFloat)

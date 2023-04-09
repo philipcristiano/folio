@@ -53,6 +53,7 @@
 -export_type([account_transaction/0]).
 -type account_transaction() :: #{
     source_id := binary(),
+    line := binary(),
     datetime := calendar:datetime(),
     direction := in | out,
     symbol := binary(),

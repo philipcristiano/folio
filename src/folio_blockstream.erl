@@ -219,6 +219,7 @@ blockstream_tx_to_transactions(
             {Include, TXAttrs} = addrinfo_to_attrs(Addr, AddrInfo),
             TX = maps:merge(TXAttrs, #{
                 source_id => TXID,
+                line => <<"">>,
                 datetime => BlockTime,
                 type => undefined,
                 symbol => <<"BTC">>,
@@ -243,6 +244,7 @@ blockstream_tx_to_transactions(
             Include = TXAddr == Addr,
             TX = #{
                 source_id => TXID,
+                line => <<"">>,
                 datetime => BlockTime,
                 amount => sats_to_btc(Value),
                 type => undefined,

@@ -300,6 +300,7 @@ write_account_transactions(#{id := IntegrationID}, _Account = #{id := AccountID}
                 fun(
                     _T = #{
                         source_id := SourceID,
+                        line := Line,
                         datetime := DT,
                         direction := Direction,
                         symbol := Symbol,
@@ -312,6 +313,7 @@ write_account_transactions(#{id := IntegrationID}, _Account = #{id := AccountID}
                         integration_id => IntegrationID,
                         external_id => AccountID,
                         source_id => SourceID,
+                        line => Line,
                         timestamp => DT,
                         direction => Direction,
                         symbol => Symbol,

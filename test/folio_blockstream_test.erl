@@ -170,6 +170,7 @@ accounts_transactions_test() ->
             direction := out,
             source_id :=
                 <<"8529be643ed0200777afa7b389debec28b8ece52a0318d98575b6a107c19e529">>,
+            line := <<"">>,
             symbol := <<"BTC">>,
             type := undefined
         },

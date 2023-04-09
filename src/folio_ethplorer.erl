@@ -151,6 +151,7 @@ op_to_txs(Addr, #{
     [
         #{
             source_id => TXHash,
+            line => <<"">>,
             datetime => qdate:to_date(Timestamp),
             direction => Direction,
             symbol => Symbol,
@@ -176,6 +177,7 @@ api_tx_to_txs(Addr, #{
     [
         #{
             source_id => TXHash,
+            line => <<"">>,
             datetime => qdate:to_date(Timestamp),
             direction => Direction,
             symbol => <<"ETH">>,

@@ -35,10 +35,10 @@ accounts_init(_Integration = #{id := IntegrationID}) ->
     }.
 
 accounts(State) ->
-    {ok, _Headers, AccountResp, State1} = request(<<"/accounts">>, State),
+    {ok, _, _, AccountResp} = request(<<"/accounts">>, State),
 
     FAccounts = lists:map(fun cb_to_account/1, AccountResp),
-    {complete, FAccounts, State1}.
+    {complete, FAccounts, State}.
 
 account_transactions_init(#{id := IntegrationID}, #{id := AccountID}) ->
     State = #{
@@ -54,28 +54,28 @@ account_transactions(State = #{account_id := AccountID, currency := undefined}) 
     % but the coinbasepro account is 1 currency. Make a request when starting
     % to avoid complicating our API
     Path = <<<<"/accounts/">>/binary, AccountID/binary>>,
-    {ok, _Headers, Resp, State1} = request(Path, State),
+    {ok, _, _, Resp} = request(Path, State),
     #{<<"currency">> := Currency} = Resp,
-    State2 = State1#{currency => Currency},
-    {incomplete, [], State2};
+    State1 = State#{currency => Currency},
+    {incomplete, [], State1};
 account_transactions(
     State = #{account_id := AccountID, currency := Currency, next_ledger_qs := QS}
 ) ->
     Path = <<<<"/accounts/">>/binary, AccountID/binary, <<"/ledger">>/binary, QS/binary>>,
-    {ok, Headers, Resp, State1} = request(Path, State),
+    {ok, _, Headers, Resp} = request(Path, State),
 
     CBBefore = proplists:get_value(<<"CB-BEFORE">>, Headers),
 
-    TXLists = lists:map(fun(I) -> cb_to_txs(I, State1) end, Resp),
+    TXLists = lists:map(fun(I) -> cb_to_txs(I, State) end, Resp),
     TXs = lists:flatten(TXLists),
 
-    {Complete, State2} =
+    {Complete, State1} =
         case CBBefore of
             undefined ->
-                {complete, State1};
+                {complete, State};
             _ ->
                 NextQS = <<<<"?before=">>/binary, CBBefore/binary>>,
-                {incomplete, State1#{next_ledger_qs => NextQS}}
+                {incomplete, State#{next_ledger_qs => NextQS}}
         end,
     ?LOG_DEBUG(#{
         message => coinbase_pro_ledger,
@@ -86,22 +86,7 @@ account_transactions(
         resp => Resp,
         path => Path
     }),
-    % {ok, Resp, State1} = request(NextURI, State),
-    % Data = maps:get(<<"data">>, Resp),
-
-    % Pagination = maps:get(<<"pagination">>, Resp, #{}),
-    % NextNextURI = maps:get(<<"next_uri">>, Pagination, null),
-
-    % % Determine if this is complete
-    % Complete =
-    %     case NextNextURI of
-    %         null -> complete;
-    %         _ -> incomplete
-    %     end,
-    % FolioTXs = lists:flatten(lists:map(fun cb_to_tx/1, Data)),
-    % State2 = State1#{next_uri => NextNextURI},
-    % {Complete, FolioTXs, State2}.
-    {Complete, TXs, State2}.
+    {Complete, TXs, State1}.
 
 cb_to_account(#{
     <<"id">> := SourceID,
@@ -254,12 +239,9 @@ credentials(_State = #{integration_id := ID}) ->
         ),
     C.
 
--spec request(binary(), any()) -> {ok, list(), map() | list(), any()} | {error, binary(), any()}.
 request(PathQS, State) ->
     request(PathQS, #{attempts_remaining => 3}, State).
 
--spec request(binary(), map(), any()) ->
-    {ok, list(), map() | list(), any()} | {error, binary(), any()}.
 request(PathQS, #{attempts_remaining := AR}, State) when AR =< 0 ->
     ?LOG_INFO(#{
         message => "Coinbase request failed",
@@ -275,15 +257,8 @@ request(PathQS, Opts = #{attempts_remaining := AR}, State) ->
     % signing errors if the request is delayed too long
     Headers = coinbase_sign(get, PathQS, State),
 
-    case hackney:request(get, Url, Headers, [], [with_body]) of
-        {error, timeout} ->
-            request(PathQS, Opts#{attempts_remaining => AR - 1}, State);
-        {ok, _RespCode, RespHeaders, Body} ->
-            case jsx:is_json(Body) of
-                true -> {ok, RespHeaders, jsx:decode(Body, [return_maps]), State};
-                false -> {error, Body, State}
-            end
-    end.
+    EF = fun() -> request(PathQS, Opts#{attempts_remaining => AR - 1}, State) end,
+    folio_http:request(get, Url, Headers, [], EF).
 
 coinbase_sign(get, Path, State) ->
     Now = os:system_time(second),

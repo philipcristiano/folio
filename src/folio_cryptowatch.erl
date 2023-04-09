@@ -78,11 +78,9 @@ parse_market_prices(RawPriceMap) ->
     Parsed = maps:values(NewMap),
     Parsed.
 
--spec request(binary()) -> {ok, map() | list()} | {error, binary()}.
 request(PathQS) ->
     request(PathQS, #{attempts_remaining => 5}).
 
--spec request(binary(), map()) -> {ok, map() | list()} | {error, binary()}.
 request(PathQS, #{attempts_remaining := AR}) when AR =< 0 ->
     ?LOG_INFO(#{
         message => "Cryptowatch request failed",
@@ -101,11 +99,9 @@ request(PathQS, Opts = #{attempts_remaining := AR}) ->
         {<<"user-agent">>, <<"folio">>}
     ],
     rate_limit(),
-    case hackney:request(get, URL, Headers, [], [with_body]) of
-        {error, closed} ->
-            request(PathQS, Opts#{attempts_remaining => AR - 1});
-        {error, timeout} ->
-            request(PathQS, Opts#{attempts_remaining => AR - 1});
+
+    EF = fun() -> request(PathQS, Opts#{attempts_remaining => AR - 1}) end,
+    case folio_http:request(get, URL, Headers, [], EF) of
         {ok, 429, _RespHeaders, _Body} ->
             rate_limit(),
             rate_limit(),
@@ -115,15 +111,9 @@ request(PathQS, Opts = #{attempts_remaining := AR}) ->
                 url => URL
             }),
             request(PathQS, Opts#{attempts_remaining => AR - 1});
-        {ok, _RespCode, _RespHeaders, Body} ->
-            case jsx:is_json(Body) of
-                true ->
-                    Data = jsx:decode(Body, [return_maps]),
-                    log_api_info(PathQS, Data),
-                    {ok, Data};
-                false ->
-                    {error, Body}
-            end
+        {ok, _RespCode, _RespHeaders, Data} ->
+            log_api_info(PathQS, Data),
+            {ok, Data}
     end.
 
 rate_limit() ->

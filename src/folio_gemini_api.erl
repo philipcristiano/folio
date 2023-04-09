@@ -44,7 +44,7 @@ accounts_init(_Integration = #{id := IntegrationID}) ->
     }.
 
 accounts(State = #{get_account_list := true}) ->
-    {ok, AccountResp} = request(<<"/v1/account/list">>, State),
+    {ok, _, _, AccountResp} = request(<<"/v1/account/list">>, State),
     ToSyncLists = lists:map(
         fun(#{<<"account">> := Acct}) -> [{exchange, Acct}, {earn, Acct}] end, AccountResp
     ),
@@ -54,7 +54,7 @@ accounts(State = #{to_sync := []}) ->
     {complete, [], State};
 accounts(State = #{to_sync := [{exchange, GeminiAcct} | T]}) ->
     RequestArgs = #{account => GeminiAcct},
-    {ok, BalanceResp} = request(<<"/v1/balances">>, RequestArgs, State),
+    {ok, _, _, BalanceResp} = request(<<"/v1/balances">>, RequestArgs, State),
     FBalances = lists:map(fun to_folio_balance/1, BalanceResp),
     Acct = #{
         id => <<<<"exchange.">>/binary, GeminiAcct/binary>>,
@@ -64,7 +64,7 @@ accounts(State = #{to_sync := [{exchange, GeminiAcct} | T]}) ->
     {incomplete, [Acct], State#{to_sync => T}};
 accounts(State = #{to_sync := [{earn, GeminiAcct} | T]}) ->
     RequestArgs = #{account => GeminiAcct},
-    {ok, BalanceResp} = request(<<"/v1/balances/earn">>, RequestArgs, State),
+    {ok, _, _, BalanceResp} = request(<<"/v1/balances/earn">>, RequestArgs, State),
 
     FBalances = lists:map(fun to_folio_balance/1, BalanceResp),
     Acct = #{
@@ -133,7 +133,7 @@ account_transactions(
     State = #{to_sync := [#{type := trades, request_args := RequestArgs} = H | RestToSync]}
 ) ->
     Path = <<"/v1/mytrades">>,
-    {ok, Transactions} = request(
+    {ok, _, _, Transactions} = request(
         Path, RequestArgs, State
     ),
     ?LOG_DEBUG(#{
@@ -162,7 +162,7 @@ account_transactions(
 ) ->
     Path = <<"/v1/transfers">>,
     folio_throttle:rate_limit(?TRANSFERS_THROTTLE_KEY, key),
-    {ok, Transactions} = request(
+    {ok, _, _, Transactions} = request(
         Path, RequestArgs, State
     ),
     ?LOG_DEBUG(#{
@@ -194,7 +194,7 @@ account_transactions(
     }
 ) ->
     Path = <<"/v1/earn/history">>,
-    {ok, Resp} = request(Path, RequestArgs, State),
+    {ok, _, _, Resp} = request(Path, RequestArgs, State),
 
     RespTransactions =
         case Resp of
@@ -386,17 +386,12 @@ credentials(_State = #{integration_id := ID}) ->
         ),
     C.
 
--spec request(binary(), any()) -> {ok, map() | list()} | {error, binary()}.
 request(PathQS, State) ->
     request(PathQS, #{}, #{attempts_remaining => 3}, State).
 
--spec request(binary(), map(), any()) ->
-    {ok, map() | list()} | {error, binary()}.
 request(PathQS, Args, State) ->
     request(PathQS, Args, #{attempts_remaining => 3}, State).
 
--spec request(binary(), map(), map(), any()) ->
-    {ok, map() | list()} | {error, binary()}.
 request(PathQS, _Args, #{attempts_remaining := AR}, State) when AR =< 0 ->
     ?LOG_INFO(#{
         message => "Gemini request failed",

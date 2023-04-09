@@ -171,12 +171,12 @@ account_transactions(State) ->
 
 balance(Address) when is_binary(Address) ->
     Path = <<<<"/api/address/">>/binary, Address/binary>>,
-    {ok, D} = request(Path),
+    {ok, _, _, D} = request(Path),
     {ok, D}.
 
 transactions(State = #{address := Address, last_seen_txid := LSTXID}) ->
     Path = <<<<"/api/address/">>/binary, Address/binary, <<"/txs/chain/">>/binary, LSTXID/binary>>,
-    {ok, D} = request(Path),
+    {ok, _, _, D} = request(Path),
     {Transactions, State1} = blockstream_txs_to_transactions(D, State),
     {lists:flatten(Transactions), State1}.
 
@@ -275,11 +275,9 @@ addrinfo_to_attrs(Addr, #{
     Val = sats_to_btc(Value),
     {Include, #{amount => Val}}.
 
--spec request(binary()) -> {ok, map() | list()} | {error, binary()}.
 request(PathQS) ->
     request(PathQS, #{attempts_remaining => 3}).
 
--spec request(binary(), map()) -> {ok, map() | list()} | {error, binary()}.
 request(PathQS, #{attempts_remaining := AR}) when AR =< 0 ->
     ?LOG_INFO(#{
         message => "Blockstream request failed",

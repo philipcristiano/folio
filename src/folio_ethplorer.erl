@@ -187,28 +187,26 @@ api_tx_to_txs(Addr, #{
 
 request_balance(Address) when is_binary(Address) ->
     Path = <<<<"/getAddressInfo/">>/binary, Address/binary, <<"?apiKey=freekey">>/binary>>,
-    {ok, D} = request(Path),
+    {ok, _, _, D} = request(Path),
     {ok, D}.
 
 request_address_history(Address) ->
     Path =
         <<<<"/getAddressHistory/">>/binary, Address/binary,
             <<"?apiKey=freekey&limit=1000">>/binary>>,
-    {ok, D} = request(Path),
+    {ok, _, _, D} = request(Path),
     {ok, D}.
 
 request_address_transactions(Address) ->
     Path =
         <<<<"/getAddressTransactions/">>/binary, Address/binary,
             <<"?apiKey=freekey&limit=1000">>/binary>>,
-    {ok, D} = request(Path),
+    {ok, _, _, D} = request(Path),
     {ok, D}.
 
--spec request(binary()) -> {ok, map() | list()} | {error, binary()}.
 request(PathQS) ->
     request(PathQS, #{attempts_remaining => 3}).
 
--spec request(binary(), map()) -> {ok, map() | list()} | {error, binary()}.
 request(PathQS, #{attempts_remaining := AR}) when AR =< 0 ->
     ?LOG_INFO(#{
         message => "Blockstream request failed",

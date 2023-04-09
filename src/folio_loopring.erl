@@ -37,7 +37,7 @@ accounts_init(_Integration = #{id := IntegrationID}) ->
     }.
 
 accounts(State = #{tokens := undefined}) ->
-    {ok, TokenList} = request_token_list(),
+    {ok, _, _, TokenList} = request_token_list(),
 
     ?LOG_INFO(#{
         message => loopring_tokens,
@@ -53,7 +53,7 @@ accounts(State = #{tokens := undefined}) ->
 
     {incomplete, [], State#{tokens => TokenMap, next_account_id => 1}};
 accounts(State = #{account_id := AccountID}) ->
-    {ok, APIBalances} = request_account_balance(AccountID, State),
+    {ok, _, _, APIBalances} = request_account_balance(AccountID, State),
 
     ?LOG_INFO(#{
         message => loopring_balances,
@@ -112,7 +112,7 @@ account_transactions_init(#{id := IntegrationID}, #{id := AccountID}) ->
 account_transactions(State = #{to_sync := []}) ->
     {complete, [], State};
 account_transactions(State = #{tokens := undefined}) ->
-    {ok, TokenList} = request_token_list(),
+    {ok, _, _, TokenList} = request_token_list(),
 
     ?LOG_INFO(#{
         message => loopring_tokens,
@@ -132,7 +132,7 @@ account_transactions(
         account_id := AccountID, to_sync := [#{type := transfers, start := Start} | RestToSync]
     }
 ) ->
-    {ok, APITransfers} = request_account_transfers(AccountID, Start, State),
+    {ok, _, _, APITransfers} = request_account_transfers(AccountID, Start, State),
 
     ?LOG_INFO(#{
         message => loopring_transfers,
@@ -200,14 +200,12 @@ request_account_transfers(AccountID, _StartInt, State) ->
 
     request(Path, State).
 
--spec request(binary()) -> {ok, map() | list()} | {error, binary()}.
 request(PathQS) ->
     request(PathQS, #{}).
 
 request(PathQS, State) ->
     request(PathQS, #{attempts_remaining => 3}, State).
 
--spec request(binary(), any(), map()) -> {ok, map() | list()} | {error, binary()}.
 request(PathQS, #{attempts_remaining := AR}, _State) when AR =< 0 ->
     ?LOG_INFO(#{
         message => "Loopring request failed",
@@ -221,10 +219,7 @@ request(PathQS, Opts = #{attempts_remaining := AR}, State) ->
     Headers = state_to_headers(State),
 
     rate_limit(),
-    ?LOG_INFO(#{
-        message => loopring_request,
-        url => Url
-    }),
+
     EF = fun() -> request(PathQS, Opts#{attempts_remaining => AR - 1}, State) end,
     folio_http:request(get, Url, Headers, [], EF).
 

@@ -23,7 +23,8 @@
     handle_cast/2,
     handle_info/2,
     terminate/2,
-    code_change/3
+    code_change/3,
+    stop/0
 ]).
 
 -export([sync/0, sync/1]).
@@ -66,9 +67,13 @@ init([]) ->
     {ok, _TRef} = start_timer(),
     {ok, #{pid_info_map => #{}}}.
 
+stop() ->
+    gen_server:call(?MODULE, stop).
+
 sync() ->
     C = fdb:checkout(),
     {ok, Integrations} = folio_integration:integrations(C),
+    fdb:checkin(C),
 
     lists:foreach(fun sync/1, Integrations),
     ok.
@@ -96,6 +101,9 @@ register_pid(Pid, Info) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(stop, _From, State) ->
+    Reply = ok,
+    {stop, normal, Reply, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -331,4 +339,4 @@ write_account_transactions(#{id := IntegrationID}, _Account = #{id := AccountID}
     ok.
 
 start_timer() ->
-    timer:apply_interval(timer:minutes(181), ?MODULE, sync, []).
+    bi:timer_apply_interval(timer:minutes(181), ?MODULE, sync, []).

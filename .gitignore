@@ -1,4 +1,5 @@
 # App
+
 local.config
 ebin/
 /folio.d
@@ -11,6 +12,7 @@ ebin/
 *.plt
 erl_crash.dump
 .concrete/DEV_MODE
+*.coverdata
 
 # rebar 2.x
 .rebar

@@ -19,6 +19,8 @@
 -export([set_integration_state/2, get_integration_state/1, annotate_with_state/1]).
 -export([integration_accounts/1, integration_accounts/2]).
 
+-export([write_account_transaction/4]).
+
 -export([transactions/1]).
 
 -export_type([state/0]).
@@ -282,6 +284,34 @@ fetch_integration_account_transactions(Callback, Integration = #{provider_name :
     #{mod := Mod} = provider_by_name(PN),
     InitState = Mod:account_transactions_init(Integration, Account),
     collect_account_transactions(Callback, Mod, InitState).
+
+-spec write_account_transaction(
+    epgsql:connection(), integration(), account(), account_transaction()
+) -> {ok, map()}.
+
+write_account_transaction(C, #{id := IntegrationID}, #{id := AccountID}, #{
+    source_id := SourceID,
+    line := Line,
+    datetime := DT,
+    direction := Direction,
+    symbol := Symbol,
+    amount := Amount,
+    type := Type,
+    description := Description
+}) ->
+    Data = #{
+        integration_id => IntegrationID,
+        external_id => AccountID,
+        source_id => SourceID,
+        line => Line,
+        timestamp => DT,
+        direction => Direction,
+        symbol => Symbol,
+        amount => decimal:to_binary(Amount),
+        type => Type,
+        description => Description
+    },
+    fdb:write(C, integration_account_transactions, Data).
 
 collect_account_transactions(List, Mod, State) when is_list(List) ->
     Resp = ?with_span(

@@ -304,38 +304,19 @@ write_accounts(#{id := IntegrationID}, Accounts) ->
     folio_integration:account(),
     folio_integration:account_transactions()
 ) -> ok.
-write_account_transactions(#{id := IntegrationID}, _Account = #{id := AccountID}, Transactions) ->
+write_account_transactions(
+    Integration = #{id := IntegrationID}, Account = #{id := AccountID}, Transactions
+) ->
     C = fdb:checkout(),
     ?with_span(
         <<"write_account_transactions">>,
         #{attributes => #{integration_id => IntegrationID, account_id => AccountID}},
         fun(_Ctx) ->
             lists:foreach(
-                fun(
-                    _T = #{
-                        source_id := SourceID,
-                        line := Line,
-                        datetime := DT,
-                        direction := Direction,
-                        symbol := Symbol,
-                        amount := Amount,
-                        type := Type,
-                        description := Description
-                    }
-                ) ->
-                    DBT = #{
-                        integration_id => IntegrationID,
-                        external_id => AccountID,
-                        source_id => SourceID,
-                        line => Line,
-                        timestamp => DT,
-                        direction => Direction,
-                        symbol => Symbol,
-                        amount => decimal:to_binary(Amount),
-                        type => Type,
-                        description => Description
-                    },
-                    {ok, _} = fdb:write(C, integration_account_transactions, DBT)
+                fun(T) ->
+                    {ok, _} = folio_integration:write_account_transaction(
+                        C, Integration, Account, T
+                    )
                 end,
                 Transactions
             )

@@ -9,7 +9,10 @@ on:
 jobs:
 
   docker_build:
-    uses: "philipcristiano/workflows/.github/workflows/docker-build.yml@main"
+    uses: "philipcristiano/workflows/.github/workflows/docker-build.yml@multi-platform-docker"
+    with:
+      platforms: amd64,arm64
+
 
   erlang:
     uses: "philipcristiano/workflows/.github/workflows/rebar3.yml@main"

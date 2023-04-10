@@ -12,10 +12,10 @@ load() ->
 gen_server_sync_no_accounts_test() ->
     load(),
 
-    Conn = expect_fdb_checkout(),
-    expect_fdb_checkin(Conn),
-    expect_timer_apply_interval(),
+    Conn = fdb_test:expect_fdb_checkout(),
+    fdb_test:expect_fdb_checkin(Conn),
     expect_set_integration_state(),
+    expect_timer_apply_interval(),
 
     Int1 = #{id => <<"id1">>, provider_name => <<"name1">>},
     Int2 = #{id => <<"id2">>, provider_name => <<"name2">>},
@@ -42,16 +42,16 @@ gen_server_sync_no_accounts_test() ->
     meck:wait(folio_integration, set_integration_state, [Int2, complete], 3000),
 
     ok = ?MUT:stop(),
-    3 = assert_checkouts_matches_checkins(),
+    3 = fdb_test:assert_checkouts_matches_checkins(),
 
     folio_meck:unload(?MOCK_MODS).
 
 gen_server_sync_accounts_no_txs_test() ->
     load(),
 
-    Conn = expect_fdb_checkout(),
-    expect_fdb_checkin(Conn),
-    expect_fdb_writes(Conn),
+    Conn = fdb_test:expect_fdb_checkout(),
+    fdb_test:expect_fdb_checkin(Conn),
+    fdb_test:expect_fdb_writes(Conn),
     expect_timer_apply_interval(),
     expect_set_integration_state(),
 
@@ -90,7 +90,7 @@ gen_server_sync_accounts_no_txs_test() ->
     meck:wait(folio_integration, set_integration_state, [Int2, complete], 3000),
 
     ok = ?MUT:stop(),
-    2 = assert_checkouts_matches_checkins(),
+    2 = fdb_test:assert_checkouts_matches_checkins(),
     assert_fdb_writes([
         [
             Conn,
@@ -121,17 +121,6 @@ gen_server_sync_accounts_no_txs_test() ->
 
     folio_meck:unload(?MOCK_MODS).
 
-expect_fdb_checkout() ->
-    R = make_ref(),
-    ok = meck:expect(fdb, checkout, [], R),
-    R.
-
-expect_fdb_checkin(R) ->
-    ok = meck:expect(fdb, checkin, [R], ok).
-
-expect_fdb_writes(R) ->
-    ok = meck:expect(fdb, write, [R, '_', '_'], {ok, #{}}).
-
 assert_checkout_checkin(Conn) ->
     [First | Rest] = folio_meck:history_calls(fdb),
     Last = lists:last(Rest),
@@ -155,26 +144,6 @@ expect_set_integration_state() ->
         ['_', '_'],
         ok
     ).
-
-assert_checkouts_matches_checkins() ->
-    Calls = folio_meck:history_calls(fdb),
-
-    D = lists:foldl(
-        fun({Method, _Args}, C = #{checkouts := CO, checkins := CI}) ->
-            R =
-                case Method of
-                    checkout -> C#{checkouts => CO + 1};
-                    checkin -> C#{checkins => CI + 1};
-                    _ -> C
-                end,
-            R
-        end,
-        #{checkouts => 0, checkins => 0},
-        Calls
-    ),
-    #{checkouts := NumCheckouts, checkins := NumCheckins} = D,
-    ?assertEqual(NumCheckouts, NumCheckins),
-    NumCheckouts.
 
 assert_fdb_writes(Writes) ->
     Calls = folio_meck:history_calls(fdb),

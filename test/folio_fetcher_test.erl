@@ -3,7 +3,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -define(MUT, folio_fetcher).
--define(MOCK_MODS, [folio_integration, fdb, bi]).
+-define(MOCK_MODS, [folio_integration, folio_account_provider, fdb, bi]).
 
 load() ->
     folio_meck:load(?MOCK_MODS),
@@ -28,7 +28,7 @@ gen_server_sync_no_accounts_test() ->
         {ok, Integrations}
     ),
     ok = meck:expect(
-        folio_integration,
+        folio_account_provider,
         fetch_integration_accounts,
         ['_'],
         {ok, []}
@@ -69,14 +69,14 @@ gen_server_sync_accounts_no_txs_test() ->
         {ok, Integrations}
     ),
     ok = meck:expect(
-        folio_integration,
+        folio_account_provider,
         fetch_integration_accounts,
         [
             {[Int2], {ok, [Acct2]}}
         ]
     ),
     ok = meck:expect(
-        folio_integration,
+        folio_account_provider,
         fetch_integration_account_transactions,
         ['_', '_', '_'],
         ok

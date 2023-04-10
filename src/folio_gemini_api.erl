@@ -7,7 +7,7 @@
 % * Fees not handled
 % * transfers from exchange <-> Earn do not generate the matching TX on the other side
 
--behavior(folio_integration).
+-behavior(folio_account_provider).
 
 -define(TRANSFERS_THROTTLE_KEY, folio_gemini_api_transfers).
 

@@ -7,10 +7,6 @@
     add_integration/2,
     delete_integration/2
 ]).
--export([
-    fetch_integration_accounts/1,
-    fetch_integration_account_transactions/2, fetch_integration_account_transactions/3
-]).
 
 -export([integrations/0, integrations/1, integration_by_id/2]).
 -export([set_integration_state/2, get_integration_state/1, annotate_with_state/1]).
@@ -19,9 +15,6 @@
 -export([write_account_transaction/4]).
 
 -export([transactions/1]).
-
--export_type([state/0]).
--type state() :: any().
 
 -export_type([account/0]).
 -type account() :: #{
@@ -34,14 +27,14 @@
     symbol := binary()
 }.
 
--export_type([id/0]).
--type id() :: binary().
-
 -export_type([integration/0]).
 -type integration() :: #{
     id := binary(),
     provider_name := binary()
 }.
+
+-export_type([id/0]).
+-type id() :: binary().
 
 -export_type([transaction_direction/0]).
 -type transaction_direction() :: in | out.
@@ -79,24 +72,6 @@
     type := fee | undefined,
     description := binary()
 }.
-
--type completeness() :: incomplete | complete.
-
-%%%
-%
-%  Exchange Integration Behavior
-%
-%%%
-
--callback accounts_init(integration()) -> state().
--callback add(id(), map()) -> ok.
--callback accounts(state()) -> {completeness(), list(account()), state()}.
--callback setup_properties() -> list(folio_provider:setup_property_config()).
--callback account_transactions_init(integration(), account()) -> state().
--callback account_transactions(state()) ->
-    {completeness(), integration_account_transactions(), state()}.
-
-%%%
 
 -spec add_integration(binary(), map()) -> {ok, integration()}.
 add_integration(Name, AccountProperties) ->
@@ -156,12 +131,6 @@ annotate_with_state(Int = #{id := _ID}) ->
 annotate_with_state(List) when is_list(List) ->
     lists:map(fun annotate_with_state/1, List).
 
--spec fetch_integration_accounts(integration()) -> any().
-fetch_integration_accounts(Integration = #{provider_name := PN}) ->
-    #{mod := Mod} = folio_provider:provider_by_name(PN),
-    InitState = Mod:accounts_init(Integration),
-    {ok, collect_accounts([], Mod, InitState)}.
-
 integrations() ->
     C = fdb:checkout(),
     R = integrations(C),
@@ -212,36 +181,6 @@ transactions(C) ->
     {ok, A} = fdb:select(C, Query, []),
     {ok, A}.
 
-collect_accounts(List, Mod, State) ->
-    Resp = ?with_span(
-        <<"integration_iteration">>,
-        #{attributes => #{mod => Mod}},
-        fun(_Ctx) ->
-            Mod:accounts(State)
-        end
-    ),
-
-    case Resp of
-        {incomplete, NewAccounts, NewState} ->
-            NewList = List ++ NewAccounts,
-            collect_accounts(NewList, Mod, NewState);
-        {complete, NewAccounts, _NewState} ->
-            NewList = List ++ NewAccounts,
-            NewList
-    end.
-
--spec fetch_integration_account_transactions(integration(), account()) -> {ok, list()}.
-fetch_integration_account_transactions(Integration = #{provider_name := PN}, Account) ->
-    #{mod := Mod} = folio_provider:provider_by_name(PN),
-    InitState = Mod:account_transactions_init(Integration, Account),
-    {ok, collect_account_transactions([], Mod, InitState)}.
-
--spec fetch_integration_account_transactions(any(), integration(), account()) -> ok.
-fetch_integration_account_transactions(Callback, Integration = #{provider_name := PN}, Account) ->
-    #{mod := Mod} = folio_provider:provider_by_name(PN),
-    InitState = Mod:account_transactions_init(Integration, Account),
-    collect_account_transactions(Callback, Mod, InitState).
-
 -spec write_account_transaction(
     epgsql:connection(), integration(), account(), integration_account_transaction()
 ) -> {ok, map()}.
@@ -269,41 +208,6 @@ write_account_transaction(C, #{id := IntegrationID}, #{id := AccountID}, #{
         description => Description
     },
     fdb:write(C, integration_account_transactions, Data).
-
-collect_account_transactions(List, Mod, State) when is_list(List) ->
-    Resp = ?with_span(
-        <<"integration_iteration">>,
-        #{attributes => #{mod => Mod}},
-        fun(_Ctx) ->
-            Mod:account_transactions(State)
-        end
-    ),
-
-    case Resp of
-        {incomplete, NewTXs, NewState} ->
-            NewList = List ++ NewTXs,
-            collect_account_transactions(NewList, Mod, NewState);
-        {complete, NewTXs, _NewState} ->
-            NewList = List ++ NewTXs,
-            NewList
-    end;
-collect_account_transactions(Callback, Mod, State) when is_function(Callback) ->
-    Resp = ?with_span(
-        <<"integration_iteration">>,
-        #{attributes => #{mod => Mod}},
-        fun(_Ctx) ->
-            Mod:account_transactions(State)
-        end
-    ),
-
-    case Resp of
-        {incomplete, NewTXs, NewState} ->
-            Callback(NewTXs),
-            collect_account_transactions(Callback, Mod, NewState);
-        {complete, NewTXs, _NewState} ->
-            Callback(NewTXs),
-            ok
-    end.
 
 new_id() ->
     erlang:list_to_binary(uuid:to_string(uuid:uuid4())).

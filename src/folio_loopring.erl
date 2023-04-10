@@ -2,7 +2,8 @@
 
 -include_lib("kernel/include/logger.hrl").
 -include_lib("opentelemetry_api/include/otel_tracer.hrl").
--behavior(folio_integration).
+
+-behavior(folio_account_provider).
 
 -export([folio_init/0]).
 

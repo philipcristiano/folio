@@ -139,7 +139,7 @@ handle_cast({sync, Integration = #{id := _ID, provider_name := _PN}}, State) ->
             message => "Starting sync",
             integration => Integration
         }),
-        {ok, Accounts} = folio_integration:fetch_integration_accounts(Integration),
+        {ok, Accounts} = folio_account_provider:fetch_integration_accounts(Integration),
         ok = write_accounts(Integration, Accounts),
 
         lists:foreach(
@@ -154,7 +154,7 @@ handle_cast({sync, Integration = #{id := _ID, provider_name := _PN}}, State) ->
                         })
                     end,
 
-                    ok = folio_integration:fetch_integration_account_transactions(
+                    ok = folio_account_provider:fetch_integration_account_transactions(
                         WriteFun, Integration, Acc
                     )
                 end)

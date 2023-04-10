@@ -4,15 +4,8 @@
 -include_lib("opentelemetry_api/include/otel_tracer.hrl").
 
 -export([
-    providers/0,
-    provider_by_name/1,
-    provider_setup_properties/1,
     add_integration/2,
     delete_integration/2
-]).
--export([
-    fetch_integration_accounts/1,
-    fetch_integration_account_transactions/2, fetch_integration_account_transactions/3
 ]).
 
 -export([integrations/0, integrations/1, integration_by_id/2]).
@@ -22,9 +15,6 @@
 -export([write_account_transaction/4]).
 
 -export([transactions/1]).
-
--export_type([state/0]).
--type state() :: any().
 
 -export_type([account/0]).
 -type account() :: #{
@@ -37,113 +27,55 @@
     symbol := binary()
 }.
 
--export_type([id/0]).
--type id() :: binary().
-
 -export_type([integration/0]).
 -type integration() :: #{
     id := binary(),
     provider_name := binary()
 }.
 
+-export_type([id/0]).
+-type id() :: binary().
+
+-export_type([transaction_direction/0]).
+-type transaction_direction() :: in | out.
+
 -export_type([integration_sync_state/0]).
 -type integration_sync_state() :: starting | running | complete | error.
 
--export_type([account_transactions/0]).
--type account_transactions() :: list(account_transaction).
+-export_type([integration_account_transactions/0]).
+-type integration_account_transactions() :: list(integration_account_transaction).
 
--export_type([account_transaction/0]).
--type account_transaction() :: #{
+-export_type([integration_account_transaction/0]).
+-type integration_account_transaction() :: #{
     source_id := binary(),
     line := binary(),
     datetime := calendar:datetime(),
-    direction := in | out,
+    direction := transaction_direction(),
     symbol := binary(),
     amount := decimal:decimal(),
     type := fee | undefined,
     description := binary()
 }.
 
--export_type([provider/0]).
--type provider() :: #{
-    name := binary(),
-    type := exchange | chain,
-    mod := atom()
+-export_type([account_transactions/0]).
+-type account_transactions() :: list(account_transaction).
+
+-export_type([account_transaction/0]).
+-type account_transaction() :: #{
+    integration_id := id(),
+    external_id := binary(),
+    line := binary(),
+    datetime := calendar:datetime(),
+    direction := transaction_direction(),
+    symbol := binary(),
+    amount := decimal:decimal(),
+    type := fee | undefined,
+    description := binary()
 }.
-
--export_type([setup_property_config/0]).
--type setup_property_config() :: #{
-    fields := map()
-}.
-
--type completeness() :: incomplete | complete.
-
-%%%
-%
-%  Exchange Integration Behavior
-%
-%%%
-
--callback accounts_init(integration()) -> state().
--callback add(id(), map()) -> ok.
--callback accounts(state()) -> {completeness(), list(account()), state()}.
--callback setup_properties() -> list(setup_property_config()).
--callback account_transactions_init(integration(), account()) -> state().
--callback account_transactions(state()) -> {completeness(), account_transactions(), state()}.
-
-%%%
-
-providers() ->
-    [
-        #{
-            name => <<"coinbase">>,
-            type => exchange,
-            mod => folio_coinbase_api
-        },
-        #{
-            name => <<"coinbase_pro">>,
-            type => exchange,
-            mod => folio_coinbase_pro_api
-        },
-        #{
-            name => <<"bitcoin">>,
-            type => chain,
-            mod => folio_blockstream
-        },
-        #{
-            name => <<"gemini">>,
-            type => exchange,
-            mod => folio_gemini_api
-        },
-        #{
-            name => <<"ethereum">>,
-            type => chain,
-            mod => folio_ethplorer
-        },
-        #{
-            name => <<"loopring">>,
-            type => chain,
-            mod => folio_loopring
-        }
-    ].
-
--spec provider_by_name(binary()) -> provider().
-provider_by_name(Name) ->
-    Ints = providers(),
-    case lists:search(fun(#{name := N}) -> N == Name end, Ints) of
-        {value, V} -> V;
-        _ -> throw(not_found)
-    end.
-
--spec provider_setup_properties(binary()) -> map().
-provider_setup_properties(Name) ->
-    #{mod := Mod} = provider_by_name(Name),
-    Props = Mod:setup_properties(),
-    Props.
 
 -spec add_integration(binary(), map()) -> {ok, integration()}.
 add_integration(Name, AccountProperties) ->
-    #{mod := Mod} = provider_by_name(Name),
+    #{mod := Mod} = folio_provider:provider_by_name(Name),
     IntegrationID = new_id(),
     Integration = #{id => IntegrationID, provider_name => Name},
 
@@ -199,12 +131,6 @@ annotate_with_state(Int = #{id := _ID}) ->
 annotate_with_state(List) when is_list(List) ->
     lists:map(fun annotate_with_state/1, List).
 
--spec fetch_integration_accounts(integration()) -> any().
-fetch_integration_accounts(Integration = #{provider_name := PN}) ->
-    #{mod := Mod} = provider_by_name(PN),
-    InitState = Mod:accounts_init(Integration),
-    {ok, collect_accounts([], Mod, InitState)}.
-
 integrations() ->
     C = fdb:checkout(),
     R = integrations(C),
@@ -255,38 +181,8 @@ transactions(C) ->
     {ok, A} = fdb:select(C, Query, []),
     {ok, A}.
 
-collect_accounts(List, Mod, State) ->
-    Resp = ?with_span(
-        <<"integration_iteration">>,
-        #{attributes => #{mod => Mod}},
-        fun(_Ctx) ->
-            Mod:accounts(State)
-        end
-    ),
-
-    case Resp of
-        {incomplete, NewAccounts, NewState} ->
-            NewList = List ++ NewAccounts,
-            collect_accounts(NewList, Mod, NewState);
-        {complete, NewAccounts, _NewState} ->
-            NewList = List ++ NewAccounts,
-            NewList
-    end.
-
--spec fetch_integration_account_transactions(integration(), account()) -> {ok, list()}.
-fetch_integration_account_transactions(Integration = #{provider_name := PN}, Account) ->
-    #{mod := Mod} = provider_by_name(PN),
-    InitState = Mod:account_transactions_init(Integration, Account),
-    {ok, collect_account_transactions([], Mod, InitState)}.
-
--spec fetch_integration_account_transactions(any(), integration(), account()) -> ok.
-fetch_integration_account_transactions(Callback, Integration = #{provider_name := PN}, Account) ->
-    #{mod := Mod} = provider_by_name(PN),
-    InitState = Mod:account_transactions_init(Integration, Account),
-    collect_account_transactions(Callback, Mod, InitState).
-
 -spec write_account_transaction(
-    epgsql:connection(), integration(), account(), account_transaction()
+    epgsql:connection(), integration(), account(), integration_account_transaction()
 ) -> {ok, map()}.
 
 write_account_transaction(C, #{id := IntegrationID}, #{id := AccountID}, #{
@@ -312,41 +208,6 @@ write_account_transaction(C, #{id := IntegrationID}, #{id := AccountID}, #{
         description => Description
     },
     fdb:write(C, integration_account_transactions, Data).
-
-collect_account_transactions(List, Mod, State) when is_list(List) ->
-    Resp = ?with_span(
-        <<"integration_iteration">>,
-        #{attributes => #{mod => Mod}},
-        fun(_Ctx) ->
-            Mod:account_transactions(State)
-        end
-    ),
-
-    case Resp of
-        {incomplete, NewTXs, NewState} ->
-            NewList = List ++ NewTXs,
-            collect_account_transactions(NewList, Mod, NewState);
-        {complete, NewTXs, _NewState} ->
-            NewList = List ++ NewTXs,
-            NewList
-    end;
-collect_account_transactions(Callback, Mod, State) when is_function(Callback) ->
-    Resp = ?with_span(
-        <<"integration_iteration">>,
-        #{attributes => #{mod => Mod}},
-        fun(_Ctx) ->
-            Mod:account_transactions(State)
-        end
-    ),
-
-    case Resp of
-        {incomplete, NewTXs, NewState} ->
-            Callback(NewTXs),
-            collect_account_transactions(Callback, Mod, NewState);
-        {complete, NewTXs, _NewState} ->
-            Callback(NewTXs),
-            ok
-    end.
 
 new_id() ->
     erlang:list_to_binary(uuid:to_string(uuid:uuid4())).

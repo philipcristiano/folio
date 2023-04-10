@@ -16,7 +16,7 @@ jobs:
 
   docker_push:
     name: "Push docker image"
-    uses: "philipcristiano/workflows/.github/workflows/docker-build.yml@multi-platform-docker"
+    uses: "philipcristiano/workflows/.github/workflows/docker-build-push.yml@multi-platform-docker"
 
     with:
       repository: philipcristiano/folio

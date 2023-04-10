@@ -3,7 +3,9 @@ Self host crypto portfolio application.
 
 Currently in development to keep myself busy. You likely shouldn't use.
 
-## DB
+## Development
+
+### DB
 
 ```
 rm -rf $PGDATA
@@ -15,7 +17,7 @@ make services
 sh ./db_init.sh
 ```
 
-## Model
+### Model
 
 `provider` - A source of information, the implementation for integrations but not setup. Something like "coinbase" or "bitcoin chain".
 
@@ -40,9 +42,16 @@ sh ./db_init.sh
 
 ## Installation
 
-### Configuration
+Folio is best deployed as a Docker container and requires a separate Postgres instance. There are not yet any tagged releases, the [`main` branch/tag](https://hub.docker.com/r/philipcristiano/folio/tags?page=1&name=main) is relatively stable.
 
-#### Postgres
+Currently built for AMD64 and ARM64
+
+
+
+
+### Application Configuration
+
+#### Environment variables
 
 `PGHOST` - (`localhost`) - Hostname of the database
 `PGPORT` - (`5432`) - Port of the database

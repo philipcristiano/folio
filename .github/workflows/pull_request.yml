@@ -9,10 +9,11 @@ on:
 jobs:
 
   docker_build:
-    uses: "philipcristiano/workflows/.github/workflows/docker-build.yml@multi-platform-docker"
+    uses: "philipcristiano/workflows/.github/workflows/docker-build.yml@main"
     with:
-      platforms: amd64,arm64
-
+      qemu_platforms: amd64,arm64
+      docker_platforms: linux/amd64,linux/arm64/v8
+      timeout: 25
 
   erlang:
     uses: "philipcristiano/workflows/.github/workflows/rebar3.yml@main"

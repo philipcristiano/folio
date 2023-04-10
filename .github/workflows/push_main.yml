@@ -16,11 +16,13 @@ jobs:
 
   docker_push:
     name: "Push docker image"
-    uses: "philipcristiano/workflows/.github/workflows/docker-build-push.yml@multi-platform-docker"
+    uses: "philipcristiano/workflows/.github/workflows/docker-build-push.yml@main"
 
     with:
       repository: philipcristiano/folio
-      platforms: amd64,arm64
+      qemu_platforms: amd64,arm64
+      docker_platforms: linux/amd64,linux/arm64/v8
+      timeout: 25
 
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}

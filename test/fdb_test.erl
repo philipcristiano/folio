@@ -2,6 +2,9 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-export([expect_fdb_checkout/0, expect_fdb_checkin/1, expect_fdb_writes/1]).
+-export([assert_checkouts_matches_checkins/0]).
+
 -define(MUT, fdb).
 -define(MOCK_MODS, [epgsql]).
 
@@ -440,3 +443,70 @@ delete_test() ->
     ?assertMatch({ok, 1}, Ret),
     ?assertMatch([Conn, Statement, [<<"bar">>, 1]], Args),
     folio_meck:unload(?MOCK_MODS).
+
+%%%
+%
+% Helpers for other modules to use for expecting/asserting fdb
+%
+%%%
+
+expect_fdb_checkout() ->
+    R = make_ref(),
+    ok = meck:expect(fdb, checkout, [], R),
+    R.
+
+expect_fdb_checkin(R) ->
+    ok = meck:expect(fdb, checkin, [R], ok).
+
+expect_fdb_writes(R) ->
+    ok = meck:expect(fdb, write, [R, '_', '_'], {ok, #{}}).
+
+assert_checkouts_matches_checkins() ->
+    Calls = folio_meck:history_calls(fdb),
+
+    D = lists:foldl(
+        fun({Method, _Args}, C = #{checkouts := CO, checkins := CI}) ->
+            R =
+                case Method of
+                    checkout -> C#{checkouts => CO + 1};
+                    checkin -> C#{checkins => CI + 1};
+                    _ -> C
+                end,
+            R
+        end,
+        #{checkouts => 0, checkins => 0},
+        Calls
+    ),
+    #{checkouts := NumCheckouts, checkins := NumCheckins} = D,
+    ?assertEqual(NumCheckouts, NumCheckins),
+    NumCheckouts.
+
+assert_fdb_writes(Writes) ->
+    Calls = folio_meck:history_calls(fdb),
+
+    WriteCalls = lists:filtermap(
+        fun({M, Args}) ->
+            case M of
+                write -> {true, Args};
+                _ -> false
+            end
+        end,
+        Calls
+    ),
+    io:format("Write calls ~p~n", [WriteCalls]),
+
+    lists:zipwith(
+        fun(A, B) ->
+            ?assertEqual(A, B)
+        end,
+        Writes,
+        WriteCalls
+    ).
+
+assert_checkout_checkin(Conn) ->
+    [First | Rest] = folio_meck:history_calls(fdb),
+    Last = lists:last(Rest),
+
+    ?assertEqual({checkout, []}, First),
+    ?assertEqual({checkin, [Conn]}, Last),
+    ok.

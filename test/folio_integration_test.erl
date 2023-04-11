@@ -46,8 +46,8 @@ transactions_test() ->
         },
 
     meck:expect(fdb, select, [
-        {[Conn, integrations, '_'], {ok, [Int1, Int2]}},
-        {[Conn, integration_account_transactions, #{}], {ok, [T1, T2]}}
+        {[Conn, integrations, '_', '_'], {ok, [Int1, Int2]}},
+        {[Conn, integration_account_transactions, #{}, '_'], {ok, [T1, T2]}}
     ]),
 
     {ok, [TR1, TR2]} = ?MUT:transactions(Conn, #{}),

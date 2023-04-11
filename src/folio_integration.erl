@@ -16,7 +16,7 @@
     write_account/3, write_accounts/3, write_account_transaction/4, write_account_transactions/4
 ]).
 
--export([transactions/1]).
+-export([transactions/1, transactions/2]).
 
 -export_type([account/0]).
 -type account() :: #{
@@ -184,10 +184,22 @@ integration_accounts(C, IntegrationID) ->
 
 -spec transactions(epgsql:connection()) -> {ok, [account_transactions()]}.
 transactions(C) ->
-    Query =
-        "SELECT * FROM integration_account_transactions as iat JOIN integrations AS i ON iat.integration_id = i.id ORDER BY timestamp DESC;",
-    {ok, A} = fdb:select(C, Query, []),
-    {ok, A}.
+    transactions(C, #{}).
+
+-spec transactions(epgsql:connection(), map()) -> {ok, [account_transactions()]}.
+transactions(C, Filters) ->
+    {ok, Integrations} = fdb:select(C, integrations, #{}),
+    IntegrationsByID = lists:map(fun(I = #{id := ID}) -> {ID, I} end, Integrations),
+    IntegrationsMap = maps:from_list(IntegrationsByID),
+    {ok, RawT} = fdb:select(C, integration_account_transactions, Filters),
+    T = lists:map(
+        fun(T = #{integration_id := IID}) ->
+            #{provider_name := PN} = maps:get(IID, IntegrationsMap),
+            T#{provider_name => PN}
+        end,
+        RawT
+    ),
+    {ok, T}.
 
 -spec write_account(epgsql:connection(), integration(), account()) -> ok.
 write_account(C, #{id := IntegrationID}, #{id := ID, balances := Balances}) ->

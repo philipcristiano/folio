@@ -35,20 +35,12 @@ handle_req(
     _Body,
     State
 ) ->
-    {ok, C} = fdb:connect(),
+    C = fdb:checkout(),
     {ok, Transactions} = folio_integration:transactions(C),
+    fdb:checkin(C),
     TOut = lists:map(fun fmt_account_transaction/1, Transactions),
 
-    {Req, 200, #{transactions => TOut}, State};
-handle_req(
-    Req = #{method := <<"POST">>},
-    _Params,
-    _Body,
-    State
-) ->
-    ?LOG_INFO(#{message => syncAccounts}),
-
-    {Req, 202, #{status => ok}, State}.
+    {Req, 200, #{transactions => TOut}, State}.
 
 post_req(_Response, _State) ->
     ok.

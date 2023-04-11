@@ -224,14 +224,14 @@ to_folio_balance(#{
     <<"amount">> := BalanceS
 }) ->
     Balance = folio_math:to_decimal(BalanceS),
-    #{balance => Balance, symbol => Currency};
+    #{balance => Balance, asset => #{symbol => Currency}};
 to_folio_balance(#{
     <<"type">> := <<"Earn">>,
     <<"currency">> := Currency,
     <<"balance">> := BalanceS
 }) ->
     Balance = folio_math:to_decimal(BalanceS),
-    #{balance => Balance, symbol => Currency}.
+    #{balance => Balance, asset => #{symbol => Currency}}.
 
 transfers_to_folio_txs(
     #{

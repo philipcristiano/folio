@@ -69,7 +69,9 @@ write_accounts_test() ->
 
     Int = #{id => <<"id1">>, provider_name => <<"name1">>},
     Acct1 = #{id => <<"aid1">>, balances => []},
-    Acct2 = #{id => <<"aid2">>, balances => [#{balance => {1, 2}, symbol => <<"BTC">>}]},
+    Acct2 = #{
+        id => <<"aid2">>, balances => [#{balance => {1, 2}, asset => #{symbol => <<"BTC">>}}]
+    },
 
     ok = ?MUT:write_accounts(Conn, Int, [Acct1, Acct2]),
 

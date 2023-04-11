@@ -325,7 +325,7 @@ to_account(Addr, Balance) ->
         balances => [
             #{
                 balance => Balance,
-                symbol => <<"BTC">>
+                asset => #{symbol => <<"BTC">>}
             }
         ]
     }.

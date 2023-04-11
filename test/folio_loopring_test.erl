@@ -36,8 +36,8 @@ accounts_address_test() ->
     ?assertMatch(
         #{
             balances := [
-                #{balance := {163599196, -9}, symbol := <<"ETH">>},
-                #{balance := {729951761, -8}, symbol := <<"LRC">>}
+                #{balance := {163599196, -9}, asset := #{symbol := <<"ETH">>}},
+                #{balance := {729951761, -8}, asset := #{symbol := <<"LRC">>}}
             ],
             id := AccountID
         },

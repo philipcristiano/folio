@@ -26,7 +26,7 @@
 
 -type account_balance() :: #{
     balance := decimal:decimal(),
-    symbol := binary()
+    asset := external_asset()
 }.
 
 -export_type([integration/0]).
@@ -194,7 +194,7 @@ write_account(C, #{id := IntegrationID}, #{id := ID, balances := Balances}) ->
     AData = #{external_id => ID, integration_id => IntegrationID},
     {ok, _} = fdb:write(C, integration_accounts, AData),
     lists:foreach(
-        fun(#{balance := Balance, symbol := Symbol}) ->
+        fun(#{balance := Balance, asset := #{symbol := Symbol}}) ->
             BalData = #{
                 integration_id => IntegrationID,
                 external_id => ID,

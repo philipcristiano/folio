@@ -140,13 +140,19 @@ handle_cast({sync, Integration = #{id := _ID, provider_name := _PN}}, State) ->
             integration => Integration
         }),
         {ok, Accounts} = folio_account_provider:fetch_integration_accounts(Integration),
-        ok = write_accounts(Integration, Accounts),
+        C = fdb:checkout(),
+        ok = folio_integration:write_accounts(C, Integration, Accounts),
+        fdb:checkin(C),
 
         lists:foreach(
             fun(Acc) ->
                 ctx_spawn(<<"fetch_integration">>, {transactions, Integration, Acc}, fun() ->
                     WriteFun = fun(TXs) ->
-                        ok = write_account_transactions(Integration, Acc, TXs),
+                        C2 = fdb:checkout(),
+                        ok = folio_integration:write_account_transactions(
+                            C2, Integration, Acc, TXs
+                        ),
+                        fdb:checkin(C2),
                         ?LOG_DEBUG(#{
                             message => account_transactions,
                             account => Acc,
@@ -263,67 +269,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-write_accounts(#{id := IntegrationID}, Accounts) ->
-    C = fdb:checkout(),
-    ?with_span(
-        <<"write_accounts">>,
-        #{attributes => #{integration_id => IntegrationID}},
-        fun(_Ctx) ->
-            lists:foreach(
-                fun(#{id := ID, balances := Balances}) ->
-                    AData = #{external_id => ID, integration_id => IntegrationID},
-                    {ok, _} = fdb:write(C, integration_accounts, AData),
-                    lists:foreach(
-                        fun(#{balance := Balance, symbol := Symbol}) ->
-                            BalData = #{
-                                integration_id => IntegrationID,
-                                external_id => ID,
-                                symbol => Symbol,
-                                balance => decimal:to_binary(Balance)
-                            },
-                            ?LOG_DEBUG(#{
-                                message => write_cb_account,
-                                account_data => AData,
-                                balance_data => BalData
-                            }),
-                            {ok, _} = fdb:write(C, integration_account_balances, BalData)
-                        end,
-                        Balances
-                    )
-                end,
-                Accounts
-            )
-        end
-    ),
-    fdb:checkin(C),
-    ok.
-
-% TODO: Move fdb:write to folio_integration
--spec write_account_transactions(
-    folio_integration:integration(),
-    folio_integration:account(),
-    folio_integration:account_transactions()
-) -> ok.
-write_account_transactions(
-    Integration = #{id := IntegrationID}, Account = #{id := AccountID}, Transactions
-) ->
-    C = fdb:checkout(),
-    ?with_span(
-        <<"write_account_transactions">>,
-        #{attributes => #{integration_id => IntegrationID, account_id => AccountID}},
-        fun(_Ctx) ->
-            lists:foreach(
-                fun(T) ->
-                    {ok, _} = folio_integration:write_account_transaction(
-                        C, Integration, Account, T
-                    )
-                end,
-                Transactions
-            )
-        end
-    ),
-    fdb:checkin(C),
-    ok.
 
 start_timer() ->
     bi:timer_apply_interval(timer:minutes(181), ?MODULE, sync, []).

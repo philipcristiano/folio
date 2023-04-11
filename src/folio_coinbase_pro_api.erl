@@ -99,7 +99,7 @@ cb_to_account(#{
         balances => [
             #{
                 balance => Balance,
-                symbol => Currency
+                asset => #{symbol => Currency}
             }
         ]
     }.

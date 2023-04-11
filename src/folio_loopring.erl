@@ -85,7 +85,7 @@ to_balance(Symbol, RawBalance, Decimal) ->
     Balance = to_value(RawBalance, Decimal),
     #{
         balance => Balance,
-        symbol => Symbol
+        asset => #{symbol => Symbol}
     }.
 
 to_value(RawBalance, DecimalBin) when is_binary(DecimalBin) ->

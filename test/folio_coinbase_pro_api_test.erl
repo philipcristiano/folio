@@ -39,14 +39,14 @@ accounts_test() ->
 
     ?assertMatch(
         #{
-            balances := [#{balance := {123, -2}, symbol := <<"BTC">>}],
+            balances := [#{balance := {123, -2}, asset := #{symbol := <<"BTC">>}}],
             id := <<"test_account_id_1">>
         },
         Acct1
     ),
     ?assertMatch(
         #{
-            balances := [#{balance := {456, -2}, symbol := <<"USD">>}],
+            balances := [#{balance := {456, -2}, asset := #{symbol := <<"USD">>}}],
             id := <<"test_account_id_2">>
         },
         Acct2

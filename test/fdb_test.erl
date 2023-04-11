@@ -3,7 +3,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -export([expect_fdb_checkout/0, expect_fdb_checkin/1, expect_fdb_writes/1]).
--export([assert_checkouts_matches_checkins/0]).
+-export([assert_checkouts_matches_checkins/0, assert_writes/1]).
 
 -define(MUT, fdb).
 -define(MOCK_MODS, [epgsql]).
@@ -510,3 +510,25 @@ assert_checkout_checkin(Conn) ->
     ?assertEqual({checkout, []}, First),
     ?assertEqual({checkin, [Conn]}, Last),
     ok.
+
+assert_writes(Writes) ->
+    Calls = folio_meck:history_calls(fdb),
+
+    WriteCalls = lists:filtermap(
+        fun({M, Args}) ->
+            case M of
+                write -> {true, Args};
+                _ -> false
+            end
+        end,
+        Calls
+    ),
+    io:format("Write calls ~p~n", [WriteCalls]),
+
+    lists:zipwith(
+        fun(A, B) ->
+            ?assertEqual(A, B)
+        end,
+        Writes,
+        WriteCalls
+    ).

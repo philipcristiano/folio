@@ -31,7 +31,7 @@ accounts_address_test() ->
 
     ?assertMatch(
         #{
-            balances := [#{balance := {7, -8}, symbol := <<"BTC">>}],
+            balances := [#{balance := {7, -8}, asset := #{symbol := <<"BTC">>}}],
             id := <<"test_bitcoin_address">>
         },
         Acct
@@ -238,7 +238,7 @@ tx_p2sh_out(Addr) ->
 
 acct(ID, Bal) ->
     #{
-        balances => [#{balance => Bal, symbol => <<"BTC">>}],
+        balances => [#{balance => Bal, asset => #{symbol => <<"BTC">>}}],
         id => ID
     }.
 

@@ -180,7 +180,7 @@ transfer_to_txs(
             line => <<"">>,
             datetime => qdate:to_date(trunc(TimestampMS / 1000)),
             direction => Direction,
-            symbol => Symbol,
+            asset => #{symbol => Symbol},
             amount => Amount,
             type => undefined,
             description => Description

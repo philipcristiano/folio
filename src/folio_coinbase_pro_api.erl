@@ -127,7 +127,7 @@ cb_to_txs(
         line => <<"">>,
         datetime => qdate:to_date(CreatedAt),
         direction => Direction,
-        symbol => Currency,
+        asset => #{symbol => Currency},
         amount => folio_math:to_decimal(Amount),
         type => undefined,
         description => <<"sell">>
@@ -154,7 +154,7 @@ cb_to_txs(
         line => <<"">>,
         datetime => qdate:to_date(CreatedAt),
         direction => Direction,
-        symbol => Currency,
+        asset => #{symbol => Currency},
         amount => decimal:abs(folio_math:to_decimal(Amount)),
         type => undefined,
         description => TransferType
@@ -176,7 +176,7 @@ cb_to_txs(
         line => <<"">>,
         datetime => qdate:to_date(CreatedAt),
         direction => out,
-        symbol => Currency,
+        asset => #{symbol => Currency},
         amount => decimal:abs(folio_math:to_decimal(Amount)),
         type => fee,
         description => <<<<"fee ">>/binary, ProductID/binary>>
@@ -205,7 +205,7 @@ cb_to_txs(
         line => <<"">>,
         datetime => qdate:to_date(CreatedAt),
         direction => Direction,
-        symbol => Currency,
+        asset => #{symbol => Currency},
         amount => AmountABS,
         type => undefined,
         description => ProductID
@@ -231,7 +231,7 @@ cb_to_txs(
         line => <<"">>,
         datetime => qdate:to_date(CreatedAt),
         direction => Direction,
-        symbol => Currency,
+        asset => #{symbol => Currency},
         amount => AmountABS,
         type => undefined,
         description => <<"stablecoin conversion">>

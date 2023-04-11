@@ -139,7 +139,7 @@ accounts_exchange_transactions_test() ->
             line := <<"BTC">>,
             datetime := {{1970, 1, 1}, {0, 0, 10}},
             direction := in,
-            symbol := <<"BTC">>,
+            asset := #{symbol := <<"BTC">>},
             amount := {27343246, -10},
             type := undefined,
             description := <<"BTCUSD">>
@@ -152,7 +152,7 @@ accounts_exchange_transactions_test() ->
             line := <<"USD">>,
             datetime := {{1970, 1, 1}, {0, 0, 10}},
             direction := out,
-            symbol := <<"USD">>,
+            asset := #{symbol := <<"USD">>},
             amount := {9975062230014, -12},
             type := undefined,
             description := <<"BTCUSD">>
@@ -165,7 +165,7 @@ accounts_exchange_transactions_test() ->
             line := <<"BTC">>,
             datetime := {{1970, 1, 1}, {0, 0, 20}},
             direction := out,
-            symbol := <<"BTC">>,
+            asset := #{symbol := <<"BTC">>},
             amount := {12343246, -10},
             type := undefined,
             description := <<"BTCUSD">>
@@ -178,7 +178,7 @@ accounts_exchange_transactions_test() ->
             line := <<"USD">>,
             datetime := {{1970, 1, 1}, {0, 0, 20}},
             direction := in,
-            symbol := <<"USD">>,
+            asset := #{symbol := <<"USD">>},
             amount := {4505272446754, -12},
             type := undefined,
             description := <<"BTCUSD">>
@@ -191,7 +191,7 @@ accounts_exchange_transactions_test() ->
             line := <<"">>,
             datetime := {{1970, 1, 1}, {0, 0, 10}},
             direction := in,
-            symbol := <<"USD">>,
+            asset := #{symbol := <<"USD">>},
             amount := {125, 0},
             type := undefined,
             description := <<"Deposit Advanced">>
@@ -204,7 +204,7 @@ accounts_exchange_transactions_test() ->
             line := <<"">>,
             datetime := {{1970, 1, 1}, {0, 0, 20}},
             direction := out,
-            symbol := <<"USD">>,
+            asset := #{symbol := <<"USD">>},
             amount := {1, 2},
             type := undefined,
             description := <<"Withdrawal Complete">>
@@ -217,7 +217,7 @@ accounts_exchange_transactions_test() ->
             line := <<"">>,
             datetime := {{1970, 1, 1}, {0, 0, 20}},
             direction := in,
-            symbol := <<"USD">>,
+            asset := #{symbol := <<"USD">>},
             amount := {25, 0},
             type := undefined,
             description := <<"Reward Advanced">>
@@ -231,7 +231,7 @@ accounts_exchange_transactions_test() ->
             line := <<"">>,
             datetime := {{1970, 1, 1}, {0, 1, 40}},
             direction := out,
-            symbol := <<"BTC">>,
+            asset := #{symbol := <<"BTC">>},
             amount := {100000001, -8},
             type := undefined,
             description := <<"Earn Deposit">>
@@ -283,7 +283,7 @@ accounts_earn_transactions_test() ->
             source_id := <<"GHIJK34L5">>,
             datetime := {{1970, 1, 1}, {0, 1, 40}},
             direction := in,
-            symbol := <<"BTC">>,
+            asset := #{symbol := <<"BTC">>},
             amount := {100000001, -8},
             type := undefined,
             description := <<"Earn Deposit">>
@@ -295,7 +295,7 @@ accounts_earn_transactions_test() ->
             source_id := <<"GHIJK34L4">>,
             datetime := {{1970, 1, 1}, {0, 1, 39}},
             direction := in,
-            symbol := <<"BTC">>,
+            asset := #{symbol := <<"BTC">>},
             amount := {200000002, -8},
             type := undefined,
             description := <<"Interest">>

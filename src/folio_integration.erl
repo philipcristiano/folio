@@ -45,12 +45,18 @@
 -export_type([integration_account_transactions/0]).
 -type integration_account_transactions() :: list(integration_account_transaction).
 
+-export_type([external_asset/0]).
+-type external_asset() :: #{
+    symbol => binary()
+}.
+
 -export_type([integration_account_transaction/0]).
 -type integration_account_transaction() :: #{
     source_id := binary(),
     line := binary(),
     datetime := calendar:datetime(),
     direction := transaction_direction(),
+    asset := external_asset(),
     symbol := binary(),
     amount := decimal:decimal(),
     type := fee | undefined,
@@ -190,7 +196,7 @@ write_account_transaction(C, #{id := IntegrationID}, #{id := AccountID}, #{
     line := Line,
     datetime := DT,
     direction := Direction,
-    symbol := Symbol,
+    asset := #{symbol := Symbol},
     amount := Amount,
     type := Type,
     description := Description

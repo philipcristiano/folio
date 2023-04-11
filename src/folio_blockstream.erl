@@ -223,7 +223,7 @@ blockstream_tx_to_transactions(
                 line => <<"">>,
                 datetime => BlockTime,
                 type => undefined,
-                symbol => <<"BTC">>,
+                asset => #{symbol => <<"BTC">>},
                 direction => out,
                 description => <<"">>
             }),
@@ -249,7 +249,7 @@ blockstream_tx_to_transactions(
                 datetime => BlockTime,
                 amount => sats_to_btc(Value),
                 type => undefined,
-                symbol => <<"BTC">>,
+                asset => #{symbol => <<"BTC">>},
                 direction => in,
                 description => <<"">>
             },

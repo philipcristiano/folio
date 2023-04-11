@@ -155,7 +155,7 @@ op_to_txs(Addr, #{
             line => <<"">>,
             datetime => qdate:to_date(Timestamp),
             direction => Direction,
-            symbol => Symbol,
+            asset => #{symbol => Symbol},
             amount => DValue,
             type => undefined,
             description => Type
@@ -181,7 +181,7 @@ api_tx_to_txs(Addr, #{
             line => <<"">>,
             datetime => qdate:to_date(Timestamp),
             direction => Direction,
-            symbol => <<"ETH">>,
+            asset => #{symbol => <<"ETH">>},
             amount => DValue,
             type => undefined,
             description => <<"">>

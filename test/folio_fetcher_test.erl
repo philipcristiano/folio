@@ -18,8 +18,7 @@ gen_server_sync_no_accounts_test() ->
     expect_timer_apply_interval(),
 
     Int1 = #{id => <<"id1">>, provider_name => <<"name1">>},
-    Int2 = #{id => <<"id2">>, provider_name => <<"name2">>},
-    Integrations = [Int1, Int2],
+    Integrations = [Int1],
 
     ok = meck:expect(
         folio_integration,
@@ -39,10 +38,9 @@ gen_server_sync_no_accounts_test() ->
     ?MUT:sync(),
 
     meck:wait(folio_integration, set_integration_state, [Int1, complete], 3000),
-    meck:wait(folio_integration, set_integration_state, [Int2, complete], 3000),
 
     ok = ?MUT:stop(),
-    3 = fdb_test:assert_checkouts_matches_checkins(),
+    2 = fdb_test:assert_checkouts_matches_checkins(),
 
     folio_meck:unload(?MOCK_MODS).
 

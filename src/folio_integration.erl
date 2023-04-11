@@ -12,7 +12,9 @@
 -export([set_integration_state/2, get_integration_state/1, annotate_with_state/1]).
 -export([integration_accounts/1, integration_accounts/2]).
 
--export([write_account_transaction/4]).
+-export([
+    write_account/3, write_accounts/3, write_account_transaction/4, write_account_transactions/4
+]).
 
 -export([transactions/1]).
 
@@ -187,6 +189,44 @@ transactions(C) ->
     {ok, A} = fdb:select(C, Query, []),
     {ok, A}.
 
+-spec write_account(epgsql:connection(), integration(), account()) -> ok.
+write_account(C, #{id := IntegrationID}, #{id := ID, balances := Balances}) ->
+    AData = #{external_id => ID, integration_id => IntegrationID},
+    {ok, _} = fdb:write(C, integration_accounts, AData),
+    lists:foreach(
+        fun(#{balance := Balance, symbol := Symbol}) ->
+            BalData = #{
+                integration_id => IntegrationID,
+                external_id => ID,
+                symbol => Symbol,
+                balance => decimal:to_binary(Balance)
+            },
+            ?LOG_DEBUG(#{
+                message => write_cb_account,
+                account_data => AData,
+                balance_data => BalData
+            }),
+            {ok, _} = fdb:write(C, integration_account_balances, BalData)
+        end,
+        Balances
+    ),
+    ok.
+
+write_accounts(C, Integration = #{id := IntegrationID}, Accounts) ->
+    ?with_span(
+        <<"write_accounts">>,
+        #{attributes => #{integration_id => IntegrationID}},
+        fun(_Ctx) ->
+            lists:foreach(
+                fun(Account) ->
+                    folio_integration:write_account(C, Integration, Account)
+                end,
+                Accounts
+            )
+        end
+    ),
+    ok.
+
 -spec write_account_transaction(
     epgsql:connection(), integration(), account(), integration_account_transaction()
 ) -> {ok, map()}.
@@ -214,6 +254,34 @@ write_account_transaction(C, #{id := IntegrationID}, #{id := AccountID}, #{
         description => Description
     },
     fdb:write(C, integration_account_transactions, Data).
+
+-spec write_account_transactions(
+    epgdql:connect(),
+    folio_integration:integration(),
+    folio_integration:account(),
+    folio_integration:account_transactions()
+) -> ok.
+write_account_transactions(
+    C,
+    Integration = #{id := IntegrationID},
+    Account = #{id := AccountID},
+    Transactions
+) ->
+    ?with_span(
+        <<"write_account_transactions">>,
+        #{attributes => #{integration_id => IntegrationID, account_id => AccountID}},
+        fun(_Ctx) ->
+            lists:foreach(
+                fun(T) ->
+                    {ok, _} = folio_integration:write_account_transaction(
+                        C, Integration, Account, T
+                    )
+                end,
+                Transactions
+            )
+        end
+    ),
+    ok.
 
 new_id() ->
     erlang:list_to_binary(uuid:to_string(uuid:uuid4())).

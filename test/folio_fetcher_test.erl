@@ -16,6 +16,8 @@ gen_server_sync_no_accounts_test() ->
     fdb_test:expect_fdb_checkin(Conn),
     expect_set_integration_state(),
     expect_timer_apply_interval(),
+    expect_write_accounts(),
+    expect_write_account_transactions(),
 
     Int1 = #{id => <<"id1">>, provider_name => <<"name1">>},
     Integrations = [Int1],
@@ -41,6 +43,13 @@ gen_server_sync_no_accounts_test() ->
 
     ok = ?MUT:stop(),
     2 = fdb_test:assert_checkouts_matches_checkins(),
+    [
+        {integrations, [Conn]},
+        {set_integration_state, [Int1, starting]},
+        {write_accounts, [Conn, Int1, []]},
+        {set_integration_state, [Int1, complete]}
+    ] =
+        folio_meck:history_calls(folio_integration),
 
     folio_meck:unload(?MOCK_MODS).
 
@@ -52,6 +61,8 @@ gen_server_sync_accounts_no_txs_test() ->
     fdb_test:expect_fdb_writes(Conn),
     expect_timer_apply_interval(),
     expect_set_integration_state(),
+    expect_write_accounts(),
+    expect_write_account_transactions(),
 
     Int2 = #{id => <<"id2">>, provider_name => <<"name2">>},
     Integrations = [Int2],
@@ -89,33 +100,28 @@ gen_server_sync_accounts_no_txs_test() ->
 
     ok = ?MUT:stop(),
     2 = fdb_test:assert_checkouts_matches_checkins(),
-    assert_fdb_writes([
-        [
+
+    [
+        {integrations, [Conn]},
+        {set_integration_state, [Int2, starting]},
+        {write_accounts, [
             Conn,
-            integration_accounts,
-            #{external_id => <<"account_2">>, integration_id => <<"id2">>}
-        ],
-        [
-            Conn,
-            integration_account_balances,
-            #{
-                balance => <<"1500.0">>,
-                external_id => <<"account_2">>,
-                integration_id => <<"id2">>,
-                symbol => <<"BTC">>
-            }
-        ],
-        [
-            Conn,
-            integration_account_balances,
-            #{
-                balance => <<"0.07">>,
-                external_id => <<"account_2">>,
-                integration_id => <<"id2">>,
-                symbol => <<"ETH">>
-            }
-        ]
-    ]),
+            Int2,
+            [
+                #{
+                    balances :=
+                        [
+                            #{balance := {15, 2}, symbol := <<"BTC">>},
+                            #{balance := {7, -2}, symbol := <<"ETH">>}
+                        ],
+                    id := <<"account_2">>
+                }
+            ]
+        ]},
+        {set_integration_state, [Int2, running]},
+        {set_integration_state, [Int2, complete]}
+    ] =
+        folio_meck:history_calls(folio_integration),
 
     folio_meck:unload(?MOCK_MODS).
 
@@ -143,24 +149,18 @@ expect_set_integration_state() ->
         ok
     ).
 
-assert_fdb_writes(Writes) ->
-    Calls = folio_meck:history_calls(fdb),
+expect_write_accounts() ->
+    ok = meck:expect(
+        folio_integration,
+        write_accounts,
+        ['_', '_', '_'],
+        ok
+    ).
 
-    WriteCalls = lists:filtermap(
-        fun({M, Args}) ->
-            case M of
-                write -> {true, Args};
-                _ -> false
-            end
-        end,
-        Calls
-    ),
-    io:format("Write calls ~p~n", [WriteCalls]),
-
-    lists:zipwith(
-        fun(A, B) ->
-            ?assertEqual(A, B)
-        end,
-        Writes,
-        WriteCalls
+expect_write_account_transactions() ->
+    ok = meck:expect(
+        folio_integration,
+        write_account_transactions,
+        ['_', '_', '_', '_'],
+        ok
     ).

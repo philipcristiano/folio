@@ -88,7 +88,7 @@ accounts_transactions_test() ->
             direction := in,
             source_id :=
                 <<"0x05fadf8737e63be58f15a38ac2a11db41298a9624d1d460d3360f0e74f17276f">>,
-            symbol := <<"LRC">>,
+            asset := #{symbol := <<"LRC">>},
             type := undefined
         },
         TX1

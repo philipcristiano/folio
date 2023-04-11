@@ -114,7 +114,7 @@ accounts_transactions_test() ->
             source_id := TransferInID,
             datetime := {{2019, 6, 11}, {22, 11, 56}},
             direction := in,
-            symbol := <<"BTC">>,
+            asset := #{symbol := <<"BTC">>},
             amount := {322, -2},
             type := undefined,
             description := <<"sell">>
@@ -128,7 +128,7 @@ accounts_transactions_test() ->
             description := <<"deposit">>,
             direction := in,
             source_id := <<"28879">>,
-            symbol := <<"BTC">>,
+            asset := #{symbol := <<"BTC">>},
             type := undefined
         },
         TXDeposit
@@ -140,7 +140,7 @@ accounts_transactions_test() ->
             description := <<"withdraw">>,
             direction := out,
             source_id := <<"24436872562">>,
-            symbol := <<"BTC">>,
+            asset := #{symbol := <<"BTC">>},
             type := undefined
         },
         TXWithdraw
@@ -152,7 +152,7 @@ accounts_transactions_test() ->
             description := <<"BTC-USD">>,
             direction := out,
             source_id := <<"135010173">>,
-            symbol := <<"BTC">>,
+            asset := #{symbol := <<"BTC">>},
             type := undefined
         },
         TXSell
@@ -164,7 +164,7 @@ accounts_transactions_test() ->
             description := <<"BTC-USD">>,
             direction := in,
             source_id := <<"135010174">>,
-            symbol := <<"BTC">>,
+            asset := #{symbol := <<"BTC">>},
             type := undefined
         },
         TXBuy
@@ -176,7 +176,7 @@ accounts_transactions_test() ->
             description := <<"fee BTC-USD">>,
             direction := out,
             source_id := <<"33513">>,
-            symbol := <<"BTC">>,
+            asset := #{symbol := <<"BTC">>},
             type := fee
         },
         TXFee
@@ -188,7 +188,7 @@ accounts_transactions_test() ->
             description := <<"stablecoin conversion">>,
             direction := out,
             source_id := <<"5832056521">>,
-            symbol := <<"BTC">>,
+            asset := #{symbol := <<"BTC">>},
             type := undefined
         },
         TXConversion

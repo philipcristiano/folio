@@ -178,7 +178,7 @@ cb_to_tx(
             source_id => SourceID,
             line => <<"">>,
             amount => decimal:abs(folio_math:to_decimal(Amount)),
-            symbol => Symbol,
+            asset => #{symbol => Symbol},
             type => undefined
         })
     ].

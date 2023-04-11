@@ -142,7 +142,7 @@ accounts_transactions_test() ->
             direction := in,
             source_id :=
                 <<"tx1">>,
-            symbol := <<"LRC">>,
+            asset := #{symbol := <<"LRC">>},
             type := undefined
         },
         TX1
@@ -155,7 +155,7 @@ accounts_transactions_test() ->
             direction := out,
             source_id :=
                 <<"tx2">>,
-            symbol := <<"LRC">>,
+            asset := #{symbol := <<"LRC">>},
             type := undefined
         },
         TX2
@@ -168,7 +168,7 @@ accounts_transactions_test() ->
             direction := in,
             source_id :=
                 <<"ethtx1">>,
-            symbol := <<"ETH">>,
+            asset := #{symbol := <<"ETH">>},
             type := undefined
         },
         ETHTX1
@@ -181,7 +181,7 @@ accounts_transactions_test() ->
             direction := out,
             source_id :=
                 <<"ethtx2">>,
-            symbol := <<"ETH">>,
+            asset := #{symbol := <<"ETH">>},
             type := undefined
         },
         ETHTX2

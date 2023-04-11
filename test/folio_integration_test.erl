@@ -9,6 +9,85 @@ load() ->
     folio_meck:load(?MOCK_MODS),
     ok.
 
+transactions_test() ->
+    load(),
+
+    Conn = fdb_test:expect_fdb_checkout(),
+    fdb_test:expect_fdb_checkin(Conn),
+    fdb_test:expect_fdb_writes(Conn),
+
+    Int1 = #{id => <<"id1">>, provider_name => <<"name1">>},
+    Int2 = #{id => <<"id2">>, provider_name => <<"name2">>},
+    T1 =
+        #{
+            amount => <<"10.0">>,
+            description => <<"test description">>,
+            direction => in,
+            external_id => <<"aid1">>,
+            integration_id => <<"id1">>,
+            line => <<"line">>,
+            source_id => <<"source_id">>,
+            symbol => <<"BTC">>,
+            timestamp => {{1, 2, 3}, {4, 5, 6}},
+            type => undefined
+        },
+    T2 =
+        #{
+            amount => <<"12.0">>,
+            description => <<"test description">>,
+            direction => in,
+            external_id => <<"aid1">>,
+            integration_id => <<"id2">>,
+            line => <<"line">>,
+            source_id => <<"source_id">>,
+            symbol => <<"BTC">>,
+            timestamp => {{1, 2, 3}, {4, 5, 7}},
+            type => undefined
+        },
+
+    meck:expect(fdb, select, [
+        {[Conn, integrations, '_'], {ok, [Int1, Int2]}},
+        {[Conn, integration_account_transactions, #{}], {ok, [T1, T2]}}
+    ]),
+
+    {ok, [TR1, TR2]} = ?MUT:transactions(Conn, #{}),
+
+    ?assertMatch(
+        #{
+            amount := <<"10.0">>,
+            description := <<"test description">>,
+            direction := in,
+            external_id := <<"aid1">>,
+            integration_id := <<"id1">>,
+            line := <<"line">>,
+            source_id := <<"source_id">>,
+            symbol := <<"BTC">>,
+            timestamp := {{1, 2, 3}, {4, 5, 6}},
+            type := undefined,
+            provider_name := <<"name1">>
+        },
+        TR1
+    ),
+
+    ?assertMatch(
+        #{
+            amount := <<"12.0">>,
+            description := <<"test description">>,
+            direction := in,
+            external_id := <<"aid1">>,
+            integration_id := <<"id2">>,
+            line := <<"line">>,
+            source_id := <<"source_id">>,
+            symbol := <<"BTC">>,
+            timestamp := {{1, 2, 3}, {4, 5, 7}},
+            type := undefined,
+            provider_name := <<"name2">>
+        },
+        TR2
+    ),
+
+    folio_meck:unload(?MOCK_MODS).
+
 set_integration_state_test() ->
     load(),
 

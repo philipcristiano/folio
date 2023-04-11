@@ -7,7 +7,10 @@
   let transactions = [];
 
   async function getTransactions(integration) {
-    let response = await fetch("/transactions", {
+    let path = "/transactions?" + new URLSearchParams({
+      integration_id: "425e22c7-6d3c-46c8-9fa0-faf4ed32e8c0"
+    });
+    let response = await fetch(path, {
         method: "GET",
     });
     let json = await response.json()
@@ -28,7 +31,7 @@
     <div><h2> {message} </h2></div>
 {/if}
 
-<div class="table border-collapse bg-white text-left text-sm overflow-x-visible table">
+<div class="table w-full border-collapse bg-white text-left text-sm overflow-x-visible table">
 
   <div class="table-header-group bg-gray-50">
       <div class="table-row">

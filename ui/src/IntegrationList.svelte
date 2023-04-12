@@ -91,7 +91,7 @@
     <div><h2> {message} </h2></div>
 {/if}
 
-<div class="border-grey max-w-sm shadow-lg border-1 p-3">
+<div class="border-grey max-w-sm shadow-lg border-1 p-3 columns-1 columns-3xs">
   <div class="border-grey max-w-sm shadow-lg border-1 p-1">
     <p class="text-lg">Balance: ${ balance }</p>
   </div>

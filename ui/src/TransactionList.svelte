@@ -43,20 +43,22 @@
     <div><h2> {message} </h2></div>
 {/if}
 
-<div>
 
-Filters:
+<div class="w-full">
+  <div class="">
 
-{#if transaction_filters.integration_id}
-  <Button on:click={() => clearFilter("integration_id")}>Integration:
-  { transaction_filters.integration_id }
-</Button>
+  Filters:
 
-{/if}
+  {#if transaction_filters.integration_id}
+    <Button on:click={() => clearFilter("integration_id")}>Integration:
+    { transaction_filters.integration_id }
+  </Button>
 
-</div>
+  {/if}
 
-<div class="table w-full border-collapse bg-white text-left text-sm overflow-x-visible table">
+  </div>
+
+<div class="table bg-white text-left text-sm overflow-x-auto">
 
   <div class="table-header-group bg-gray-50">
       <div class="table-row">
@@ -83,4 +85,5 @@ Filters:
 {/each}
 </div>
 
+</div>
 </div>

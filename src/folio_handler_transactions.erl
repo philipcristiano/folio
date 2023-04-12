@@ -53,10 +53,13 @@ handle_req(
     _Body,
     State
 ) ->
-    ?LOG_INFO(#{message => params,
-                params => Params}),
+    ?LOG_INFO(#{
+        message => params,
+        params => Params
+    }),
+    Filters = maps:filter(fun(_K, V) -> V /= undefined end, Params),
     C = fdb:checkout(),
-    {ok, Transactions} = folio_integration:transactions(C, Params),
+    {ok, Transactions} = folio_integration:transactions(C, Filters),
     fdb:checkin(C),
     TOut = lists:map(fun fmt_account_transaction/1, Transactions),
 

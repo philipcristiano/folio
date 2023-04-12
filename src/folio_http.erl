@@ -101,6 +101,7 @@ make_get(ID, PathParams, ReturnSchema) ->
 path_param_names_to_param_spec(ParamNames) ->
     lists:map(fun path_spec_for_name/1, ParamNames).
 
+path_spec_for_name(M) when is_map(M) -> M;
 path_spec_for_name(Name) ->
     #{
         in => path,

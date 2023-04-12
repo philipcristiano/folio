@@ -6,6 +6,8 @@
   import Integration from './Integration.svelte';
   import IntegrationSetup from './IntegrationSetup.svelte';
 
+  export let transaction_filters = {};
+
   let balance = "";
   let message = "";
   let address = "";
@@ -61,6 +63,9 @@
         message = json.message;
     };
   }
+  async function filterForIntegration(integration) {
+      transaction_filters = {"integration_id": integration.id};
+  }
   async function getIntegrationAccounts(integration) {
     integration['accounts'] = [];
     let response = await fetch("/integrations/" + integration.id + "/accounts", {
@@ -86,7 +91,7 @@
     <div><h2> {message} </h2></div>
 {/if}
 
-<div class="border-grey max-w-sm shadow-lg border-1 p-3">
+<div class="border-grey max-w-sm shadow-lg border-1 p-3 columns-1 columns-3xs">
   <div class="border-grey max-w-sm shadow-lg border-1 p-1">
     <p class="text-lg">Balance: ${ balance }</p>
   </div>
@@ -95,6 +100,7 @@
     <Integration {...integration} />
     <Button on:click={() => syncIntegration(integration)}>Sync</Button>
     <Button on:click={() => deleteIntegration(integration)}>Delete</Button>
+    <Button on:click={() => filterForIntegration(integration)}>Transactions</Button>
 </div>
 {/each}
 

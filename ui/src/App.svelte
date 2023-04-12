@@ -6,16 +6,21 @@
 	import IntegrationList from './IntegrationList.svelte';
 	import TransactionList from './TransactionList.svelte';
 
+  let transaction_filters = {};
+
 	onMount(() => {
 	});
 
 </script>
 
-<main class="columns-1 md:columns-6 ">
-  <BoxSidebar><IntegrationList /></BoxSidebar>
-  <BoxContent><TransactionList /></BoxContent>
+<body><div class="container mx-auto">
 
-</main>
+  <div class="flex flex-row flex-wrap py-1">
+    <BoxSidebar><IntegrationList bind:transaction_filters={transaction_filters} /></BoxSidebar>
+    <BoxContent><TransactionList bind:transaction_filters={transaction_filters} /></BoxContent>
+  </div>
+
+</div></body>
 
 <style global lang="postcss">
     @tailwind base;

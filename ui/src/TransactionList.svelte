@@ -2,12 +2,27 @@
 
   import { onMount } from 'svelte';
   import Time from "svelte-time";
+  import Button from './Button.svelte';
 
   let message = "";
-  let transactions = [];
+  export let transaction_filters = {};
 
-  async function getTransactions(integration) {
-    let response = await fetch("/transactions", {
+  let transactions = [];
+  $: getTransactions(transaction_filters);
+
+  function transaction_filters_to_params(filters) {
+      return filters
+  };
+  function clearFilter(key) {
+    delete transaction_filters[key];
+    transaction_filters = transaction_filters;
+  }
+
+  async function getTransactions(filters) {
+    let params = transaction_filters_to_params(filters);
+
+    let path = "/transactions?" + new URLSearchParams(params);
+    let response = await fetch(path, {
         method: "GET",
     });
     let json = await response.json()
@@ -28,17 +43,32 @@
     <div><h2> {message} </h2></div>
 {/if}
 
-<div class="table border-collapse bg-white text-left text-sm overflow-x-visible table">
+
+<div class="w-full">
+  <div class="">
+
+  Filters:
+
+  {#if transaction_filters.integration_id}
+    <Button on:click={() => clearFilter("integration_id")}>Integration:
+    { transaction_filters.integration_id }
+  </Button>
+
+  {/if}
+
+  </div>
+
+<div class="table bg-white text-left text-sm overflow-x-auto">
 
   <div class="table-header-group bg-gray-50">
       <div class="table-row">
-        <div scope="col" class="table-cell px-6 py-2 font-medium text-gray-900">Datetime</div>
-        <div scope="col" class="table-cell px-6 py-2 font-medium text-gray-900">Provider</div>
-        <div scope="col" class="table-cell px-6 py-2 font-medium text-gray-900">Symbol</div>
-        <div scope="col" class="table-cell px-6 py-2 font-medium text-gray-900">Direction</div>
-        <div scope="col" class="table-cell px-6 py-2 font-medium text-gray-900">Amount</div>
-        <div scope="col" class="table-cell px-6 py-2 font-medium text-gray-900">Description</div>
-        <div scope="col" class="table-cell px-6 py-2 font-medium text-gray-900">Account ID</div>
+        <div class="table-cell px-6 py-2 font-medium text-gray-900">Datetime</div>
+        <div class="table-cell px-6 py-2 font-medium text-gray-900">Provider</div>
+        <div class="table-cell px-6 py-2 font-medium text-gray-900">Symbol</div>
+        <div class="table-cell px-6 py-2 font-medium text-gray-900">Direction</div>
+        <div class="table-cell px-6 py-2 font-medium text-gray-900">Amount</div>
+        <div class="table-cell px-6 py-2 font-medium text-gray-900">Description</div>
+        <div class="table-cell px-6 py-2 font-medium text-gray-900">Account ID</div>
       </div>
   </div>
 <div class="table-row-group">
@@ -55,4 +85,5 @@
 {/each}
 </div>
 
+</div>
 </div>

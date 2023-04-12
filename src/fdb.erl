@@ -164,6 +164,16 @@ schema() ->
                 #{name => "description", type => "text"}
             ],
             primary_key => ["integration_id", "external_id", "source_id", "line"]
+        },
+        #{
+            type => view,
+            name => "v_annotated_transactions",
+            column_names => [
+                "integration_id",
+                "account_id"
+            ],
+            query =>
+                "SELECT iat.external_id as account_id, i.provider_name as provider_name FROM integrations i join integration_account_transactions iat on i.id = iat.integration_id;"
         }
     ].
 
@@ -177,7 +187,7 @@ get_table(DBRef, Name) ->
 
 get_tables(DBRef) ->
     Statement =
-        "SELECT * FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog');",
+        "SELECT * FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('information_schema', 'pg_catalog');",
     {ok, C, D} = epgsql:squery(DBRef, Statement),
     {ok, serialise(C, D)}.
 
@@ -379,6 +389,14 @@ delete(Conn, Table, Data) when is_atom(Table) ->
 determine_migrations(Conn, Schema) ->
     lists:foldl(fun(I, Acc) -> Acc ++ determine_migration(Conn, I) end, [], Schema).
 
+determine_migration(
+    _Conn, #{type := view, name := ViewName, column_names := CNs, query := Q}
+) ->
+    ?LOG_INFO(#{
+        message => view_info,
+        view => ViewName
+    }),
+    create_or_replace_view(ViewName, CNs, Q);
 determine_migration(Conn, Schema = #{type := table, name := TableName}) ->
     {ok, Data} = get_table(Conn, TableName),
     ?LOG_INFO(#{
@@ -390,6 +408,11 @@ determine_migration(Conn, Schema = #{type := table, name := TableName}) ->
         [] -> create_table_statement(Conn, Schema);
         [_] -> alter_table_statement(Conn, Schema)
     end.
+
+create_or_replace_view(Name, Columns, Query) ->
+    ColumnsString = ["( ", lists:join(", ", Columns), " )"],
+
+    [lists:flatten(["CREATE OR REPLACE VIEW ", Name, " ", ColumnsString, " AS ", Query])].
 
 create_table_statement(_Conn, TableSchema = #{type := table, name := TableName, columns := Cols}) ->
     ColStrings = lists:map(fun create_table_column/1, Cols),

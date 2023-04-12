@@ -52,16 +52,21 @@
     };
   }
   async function deleteIntegration(integration) {
-    let response = await fetch("/integrations/" + integration.id, {
-        method: "DELETE",
-    });
-    let json = await response.json()
-    if (response.ok) {
-        message = "Integration Deleted";
-        getIntegrations();
+    if (integration.delete_enabled ) {
+      let response = await fetch("/integrations/" + integration.id, {
+          method: "DELETE",
+      });
+      let json = await response.json()
+      if (response.ok) {
+          message = "Integration Deleted";
+          getIntegrations();
+      } else {
+          message = json.message;
+      }
     } else {
-        message = json.message;
-    };
+        integration.delete_enabled = true;
+        integrations = integrations;
+    }
   }
   async function filterForIntegration(integration) {
       transaction_filters = {"integration_id": integration.id};
@@ -99,8 +104,11 @@
 <div class="border-grey max-w-sm shadow-lg border-1 p-1">
     <Integration {...integration} />
     <Button on:click={() => syncIntegration(integration)}>Sync</Button>
-    <Button on:click={() => deleteIntegration(integration)}>Delete</Button>
     <Button on:click={() => filterForIntegration(integration)}>Transactions</Button>
+    {#if integration.delete_enabled }
+      Are you sure?
+    {/if}
+    <Button on:click={() => deleteIntegration(integration)}>Delete</Button>
 </div>
 {/each}
 

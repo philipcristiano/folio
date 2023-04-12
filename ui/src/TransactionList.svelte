@@ -2,7 +2,7 @@
 
   import { onMount } from 'svelte';
   import Time from "svelte-time";
-  import Button from './Button.svelte';
+  import FilterButton from './FilterButton.svelte';
 
   let message = "";
   export let transaction_filters = {};
@@ -50,9 +50,9 @@
   Filters:
 
   {#if transaction_filters.integration_id}
-    <Button on:click={() => clearFilter("integration_id")}>Integration:
+    <FilterButton on:click={() => clearFilter("integration_id")}>Integration:
     { transaction_filters.integration_id }
-  </Button>
+  </FilterButton>
 
   {/if}
 

@@ -3,7 +3,7 @@
 -include_lib("opentelemetry_api/include/otel_tracer.hrl").
 -include_lib("kernel/include/logger.hrl").
 
--export([setup/3, rate_limit/2]).
+-export([setup/3, rate_limit/2, sleep/1]).
 
 setup(Domain, Rate, Time) ->
     throttle:setup(Domain, Rate, Time).

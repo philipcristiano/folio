@@ -10,7 +10,10 @@
 
 -define(STATEMENT_GET_TABLE, "SELECT * FROM information_schema.tables WHERE table_name = $1").
 -define(STATEMENT_TABLES,
-    "SELECT * FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog');"
+    "SELECT * FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('information_schema', 'pg_catalog');"
+).
+-define(STATEMENT_VIEWS,
+    "SELECT * FROM information_schema.tables WHERE table_type = 'VIEW' AND table_schema NOT IN ('information_schema', 'pg_catalog');"
 ).
 -define(STATEMENT_GET_COLUMNS,
     "SELECT * FROM information_schema.columns WHERE table_name = $1 ORDER BY \"ordinal_position\" ASC"
@@ -37,6 +40,7 @@ create_table_test() ->
 
     [
         {squery, [Conn, ?STATEMENT_TABLES]},
+        {squery, [Conn, ?STATEMENT_VIEWS]},
         {equery, [Conn, ?STATEMENT_GET_TABLE, _GetTableArg]},
         {squery, SqueryArgs}
     ] = folio_meck:history_calls(epgsql),
@@ -75,6 +79,7 @@ create_table_with_primary_key_test() ->
 
     [
         {squery, [Conn, ?STATEMENT_TABLES]},
+        {squery, [Conn, ?STATEMENT_VIEWS]},
         {equery, [Conn, ?STATEMENT_GET_TABLE, _GetTableArg]},
         {squery, SqueryArgs}
     ] = folio_meck:history_calls(epgsql),
@@ -113,6 +118,7 @@ drop_table_test() ->
 
     [
         {squery, [Conn, ?STATEMENT_TABLES]},
+        {squery, [Conn, ?STATEMENT_VIEWS]},
         {equery, _TableEqueryArgs},
         {equery, _ColumnsEqueryArgs},
         {squery, SQueryArgs}
@@ -147,6 +153,7 @@ table_exists_test() ->
 
     [
         {squery, [Conn, ?STATEMENT_TABLES]},
+        {squery, [Conn, ?STATEMENT_VIEWS]},
         {equery, _TableEqueryArgs},
         {equery, _ColumnsEqueryArgs}
     ] = folio_meck:history_calls(epgsql),
@@ -182,6 +189,7 @@ table_exists_create_column_test() ->
 
     [
         {squery, [Conn, ?STATEMENT_TABLES]},
+        {squery, [Conn, ?STATEMENT_VIEWS]},
         {equery, _TableEqueryArgs},
         {equery, _ColumnsEqueryArgs},
         {squery, SqueryArgs}
@@ -218,12 +226,72 @@ table_exists_delete_column_test() ->
 
     [
         {squery, [Conn, ?STATEMENT_TABLES]},
+        {squery, [Conn, ?STATEMENT_VIEWS]},
         {equery, _TableEqueryArgs},
         {equery, _ColumnsEqueryArgs},
         {squery, SqueryArgs}
     ] = folio_meck:history_calls(epgsql),
 
     ?assertMatch([Conn, "ALTER TABLE test_table DROP COLUMN remove_column;"], SqueryArgs),
+
+    folio_meck:unload(?MOCK_MODS).
+
+create_view_test() ->
+    folio_meck:load(?MOCK_MODS),
+
+    ViewName = "test_view",
+
+    Conn = make_ref(),
+    TestViewSchema = #{
+        type => view,
+        name => ViewName,
+        column_names => ["a", "b", "c"],
+        query => "SELECT 1 as a, 2 as b, 3 as C;"
+    },
+
+    ok = meck:expect(epgsql, squery, [
+        {[Conn, '_'], {ok, [], []}}
+    ]),
+
+    ok = ?MUT:run(Conn, [TestViewSchema]),
+
+    [
+        {squery, [Conn, ?STATEMENT_TABLES]},
+        {squery, [Conn, ?STATEMENT_VIEWS]},
+        {squery, SqueryArgs}
+    ] = folio_meck:history_calls(epgsql),
+
+    ?assertMatch(
+        [Conn, "CREATE OR REPLACE VIEW test_view ( a, b, c ) AS SELECT 1 as a, 2 as b, 3 as C;"],
+        SqueryArgs
+    ),
+
+    folio_meck:unload(?MOCK_MODS).
+
+drop_view_test() ->
+    folio_meck:load(?MOCK_MODS),
+
+    TablesColumnRet = [{column, <<"table_name">>}],
+
+    Conn = make_ref(),
+
+    ok = meck:expect(epgsql, squery, [
+        {[Conn, ?STATEMENT_VIEWS], {ok, TablesColumnRet, [{<<"remove_view">>}]}},
+        {[Conn, '_'], {ok, [], []}}
+    ]),
+
+    ok = ?MUT:run(Conn, []),
+
+    [
+        {squery, [Conn, ?STATEMENT_TABLES]},
+        {squery, [Conn, ?STATEMENT_VIEWS]},
+        {squery, SqueryArgs}
+    ] = folio_meck:history_calls(epgsql),
+
+    ?assertMatch(
+        [Conn, "DROP VIEW remove_view;"],
+        SqueryArgs
+    ),
 
     folio_meck:unload(?MOCK_MODS).
 

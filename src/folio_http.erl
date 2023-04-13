@@ -132,6 +132,9 @@ request(Method, URL, Headers, ReqBody, ErrorFun) ->
                     ErrorFun();
                 {error, timeout} ->
                     ErrorFun();
+                {ok, 429, RespHeaders, Body} ->
+                    folio_throttle:sleep(1000),
+                    ErrorFun();
                 {ok, RespCode, RespHeaders, Body} ->
                     ?set_attributes([{<<"https.status_code">>, RespCode}]),
                     case jsx:is_json(Body) of

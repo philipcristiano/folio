@@ -213,11 +213,13 @@ handle_info({'EXIT', From, Reason}, State = #{pid_info_map := PidInfoMap}) ->
         still_running => StillRunning,
         pid_info_map => PidInfoMap
     }),
+    {ok, LastState} = folio_integration:get_integration_state(Integration),
     SyncState =
-        case {StillRunning, Reason} of
-            {false, normal} -> complete;
-            {true, normal} -> running;
-            {_, _} -> error
+        case {LastState, StillRunning, Reason} of
+            {error, _, _} -> error;
+            {_, false, normal} -> complete;
+            {_, true, normal} -> running;
+            {_, _, _} -> error
         end,
     folio_integration:set_integration_state(Integration, SyncState),
     {noreply, State#{pid_info_map => NewPidInfoMap}};

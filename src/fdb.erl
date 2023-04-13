@@ -191,6 +191,12 @@ get_tables(DBRef) ->
     {ok, C, D} = epgsql:squery(DBRef, Statement),
     {ok, serialise(C, D)}.
 
+get_views(DBRef) ->
+    Statement =
+        "SELECT * FROM information_schema.tables WHERE table_type = 'VIEW' AND table_schema NOT IN ('information_schema', 'pg_catalog');",
+    {ok, C, D} = epgsql:squery(DBRef, Statement),
+    {ok, serialise(C, D)}.
+
 get_table_columns(DBRef, Name) ->
     {ok, C, D} = epgsql:equery(
         DBRef,
@@ -206,12 +212,25 @@ run(Conn, Schema) ->
         end,
         Schema
     ),
+    DefinedViews = lists:filter(
+        fun(#{type := Type}) when is_atom(Type) ->
+            Type == view
+        end,
+        Schema
+    ),
 
     {ok, ExistingTables} = get_tables(Conn),
-    {_, ToRemove} = set_differences(
+    {ok, ExistingViews} = get_views(Conn),
+    {_, TablesToRemove} = set_differences(
         DefinedTables,
         fun(#{name := N}) -> erlang:list_to_binary(N) end,
         ExistingTables,
+        fun(#{table_name := N}) -> N end
+    ),
+    {_, ViewsToRemove} = set_differences(
+        DefinedViews,
+        fun(#{name := N}) -> erlang:list_to_binary(N) end,
+        ExistingViews,
         fun(#{table_name := N}) -> N end
     ),
 
@@ -221,10 +240,17 @@ run(Conn, Schema) ->
             Name = erlang:binary_to_list(NBin),
             drop_table_statement(Name)
         end,
-        ToRemove
+        TablesToRemove
+    ),
+    DropViewsStatements = lists:map(
+        fun(#{table_name := NBin}) ->
+            Name = erlang:binary_to_list(NBin),
+            drop_view_statement(Name)
+        end,
+        ViewsToRemove
     ),
 
-    Statements = CreateAndModifyStatements ++ DropTableStatements,
+    Statements = CreateAndModifyStatements ++ DropTableStatements ++ DropViewsStatements,
 
     lists:foreach(
         fun(Statement) ->
@@ -478,6 +504,9 @@ drop_table_column(TableName, #{name := ColName}) ->
 
 drop_table_statement(TableName) ->
     lists:flatten(["DROP TABLE ", TableName, ";"]).
+
+drop_view_statement(ViewName) ->
+    lists:flatten(["DROP VIEW ", ViewName, ";"]).
 
 serialise(Columns, Datas) ->
     Keys = lists:map(

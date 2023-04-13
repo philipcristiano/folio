@@ -22,7 +22,8 @@ start(_Type, _Args) ->
     AppRoutes = [],
     StaticRoute = [
         {"/", cowboy_static, cowboy_priv_path_for_file(IsLocalDev, App, "public/index.html")},
-        {"/[...]", cowboy_static, cowboy_priv_path_for_dir(IsLocalDev, App, "public")}
+        {"/ui/[...]", cowboy_static, cowboy_priv_path_for_dir(IsLocalDev, App, "public/ui")},
+        {"/[...]", cowboy_static, cowboy_priv_path_for_file(IsLocalDev, App, "public/index.html")}
     ],
     AllRoutes = AppRoutes ++ setup_trails() ++ StaticRoute,
     Dispatch = trails:single_host_compile(AllRoutes),

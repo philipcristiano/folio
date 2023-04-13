@@ -170,10 +170,38 @@ schema() ->
             name => "v_annotated_transactions",
             column_names => [
                 "integration_id",
-                "account_id"
+                "external_id",
+                "provider_name",
+                "source_id",
+                "line",
+                "direction",
+                "timestamp",
+                "symbol",
+                "amount",
+                "type",
+                "description"
             ],
             query =>
-                "SELECT iat.external_id as account_id, i.provider_name as provider_name FROM integrations i join integration_account_transactions iat on i.id = iat.integration_id;"
+                lists:join(
+                    " ",
+                    [
+                        "SELECT",
+                        "iat.integration_id,",
+                        "iat.external_id as account_id,",
+                        "i.provider_name as provider_name,",
+                        "iat.source_id as source_id,",
+                        "iat.line as line,",
+                        "iat.direction as direction,",
+                        "iat.timestamp as timestamp,",
+                        "iat.symbol as symbol,",
+                        "iat.amount as amount,",
+                        "iat.type as type,",
+                        "iat.description as description",
+                        "FROM integrations i",
+                        "JOIN integration_account_transactions iat",
+                        "ON i.id = iat.integration_id;"
+                    ]
+                )
         }
     ].
 

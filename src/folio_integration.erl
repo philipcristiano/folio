@@ -188,19 +188,9 @@ transactions(C) ->
 
 -spec transactions(epgsql:connection(), map()) -> {ok, [account_transactions()]}.
 transactions(C, Filters) ->
-    {ok, Integrations} = fdb:select(C, integrations, #{}, []),
-    IntegrationsByID = lists:map(fun(I = #{id := ID}) -> {ID, I} end, Integrations),
-    IntegrationsMap = maps:from_list(IntegrationsByID),
-    {ok, RawT} = fdb:select(C, integration_account_transactions, Filters, [
+    {ok, T} = fdb:select(C, v_annotated_transactions, Filters, [
         {order_by, timestamp, desc}
     ]),
-    T = lists:map(
-        fun(T = #{integration_id := IID}) ->
-            #{provider_name := PN} = maps:get(IID, IntegrationsMap),
-            T#{provider_name => PN}
-        end,
-        RawT
-    ),
     {ok, T}.
 
 -spec write_account(epgsql:connection(), integration(), account()) -> ok.

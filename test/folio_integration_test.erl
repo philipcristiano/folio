@@ -16,8 +16,6 @@ transactions_test() ->
     fdb_test:expect_fdb_checkin(Conn),
     fdb_test:expect_fdb_writes(Conn),
 
-    Int1 = #{id => <<"id1">>, provider_name => <<"name1">>},
-    Int2 = #{id => <<"id2">>, provider_name => <<"name2">>},
     T1 =
         #{
             amount => <<"10.0">>,
@@ -27,6 +25,7 @@ transactions_test() ->
             integration_id => <<"id1">>,
             line => <<"line">>,
             source_id => <<"source_id">>,
+            provider_name => <<"name1">>,
             symbol => <<"BTC">>,
             timestamp => {{1, 2, 3}, {4, 5, 6}},
             type => undefined
@@ -39,6 +38,7 @@ transactions_test() ->
             external_id => <<"aid1">>,
             integration_id => <<"id2">>,
             line => <<"line">>,
+            provider_name => <<"name2">>,
             source_id => <<"source_id">>,
             symbol => <<"BTC">>,
             timestamp => {{1, 2, 3}, {4, 5, 7}},
@@ -46,8 +46,7 @@ transactions_test() ->
         },
 
     meck:expect(fdb, select, [
-        {[Conn, integrations, '_', '_'], {ok, [Int1, Int2]}},
-        {[Conn, integration_account_transactions, #{}, '_'], {ok, [T1, T2]}}
+        {[Conn, v_annotated_transactions, '_', '_'], {ok, [T1, T2]}}
     ]),
 
     {ok, [TR1, TR2]} = ?MUT:transactions(Conn, #{}),

@@ -22,8 +22,7 @@
 <Router url="{url}">
     <div class="sticky top-0 p-4 w-full">
       <Link to="/">Folio</Link>
-      <Link to="/about">About</Link>
-      <Link to="/blog">Blog</Link>
+      <Link to="/assets">Assets</Link>
     </div>
 <body><div class="container mx-auto">
 
@@ -33,6 +32,10 @@
     </BoxSidebar>
 
     <BoxContent>
+
+      <Route path="/assets">
+        <AssetList />
+      </Route>
 
       <Route path="/">
         <TransactionList bind:transaction_filters={transaction_filters} />

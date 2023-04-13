@@ -39,8 +39,8 @@ http_request_429_test() ->
 
     ?MUT:request(Method, URL, Headers, Body, fun fake_mod:error_fun/0),
 
-    [{sleep, [1000]}] = folio_meck:history_calls(folio_throttle),
     [{request, RequestArgs}] = folio_meck:history_calls(hackney),
+    [{sleep, [1000]}] = folio_meck:history_calls(folio_throttle),
     [{error_fun, []}] = folio_meck:history_calls(fake_mod),
 
     ?assertMatch([get, URL, [], [], [with_body]], RequestArgs),

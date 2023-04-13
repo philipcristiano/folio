@@ -12,7 +12,7 @@
 
 
   async function getIntegrationAccounts() {
-    let response = await fetch("/integrations/" + id + "/accounts", {
+    let response = await fetch("/api/integrations/" + id + "/accounts", {
         method: "GET",
     });
     let json = await response.json()

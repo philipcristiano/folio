@@ -14,7 +14,7 @@
   let integrations = [];
 
   async function getBalance() {
-    let response = await fetch("/balance", {
+    let response = await fetch("/api/balance", {
         method: "GET",
     });
     let json = await response.json()
@@ -26,7 +26,7 @@
   }
 
   async function getIntegrations() {
-    let response = await fetch("/integrations", {
+    let response = await fetch("/api/integrations", {
         method: "GET",
     });
     let json = await response.json()
@@ -40,7 +40,7 @@
   }
   async function syncIntegration(integration) {
     integration['accounts'] = [];
-    let response = await fetch("/integrations/" + integration.id + "/sync", {
+    let response = await fetch("/api/integrations/" + integration.id + "/sync", {
         method: "POST",
     });
     let json = await response.json()
@@ -53,7 +53,7 @@
   }
   async function deleteIntegration(integration) {
     if (integration.delete_enabled ) {
-      let response = await fetch("/integrations/" + integration.id, {
+      let response = await fetch("/api/integrations/" + integration.id, {
           method: "DELETE",
       });
       let json = await response.json()
@@ -73,7 +73,7 @@
   }
   async function getIntegrationAccounts(integration) {
     integration['accounts'] = [];
-    let response = await fetch("/integrations/" + integration.id + "/accounts", {
+    let response = await fetch("/api/integrations/" + integration.id + "/accounts", {
         method: "GET",
     });
     let json = await response.json()

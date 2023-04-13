@@ -10,7 +10,7 @@ trails() ->
     Metadata = maps:merge(GetMetadata, PostMetadata),
     State = #{},
     [
-        trails:trail(<<"/integrations">>, ?MODULE, State, Metadata)
+        trails:trail(<<"/api/integrations">>, ?MODULE, State, Metadata)
     ].
 
 return_schema() ->

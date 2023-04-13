@@ -4,7 +4,7 @@
 
 -export([init/2, trails/0, handle_req/4, post_req/2]).
 
--define(PATH, <<"/balance">>).
+-define(PATH, <<"/api/balance">>).
 
 trails() ->
     Metadata = folio_http:make_get(getBalance, [], return_schema()),

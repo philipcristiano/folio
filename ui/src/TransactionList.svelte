@@ -21,7 +21,7 @@
   async function getTransactions(filters) {
     let params = transaction_filters_to_params(filters);
 
-    let path = "/transactions?" + new URLSearchParams(params);
+    let path = "/api/transactions?" + new URLSearchParams(params);
     let response = await fetch(path, {
         method: "GET",
     });

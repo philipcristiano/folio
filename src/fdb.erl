@@ -356,36 +356,43 @@ extra_to_sql({order_by, Name, asc}) ->
 extra_to_sql({order_by, Name, desc}) ->
     [" ORDER BY ", erlang:atom_to_list(Name), " DESC"].
 
--spec select(epgsql:connection(), atom() | list(), map() | list(), list()) -> {ok, list(map())}.
+-spec select(epgsql:connection(), atom() | list(), map() | list(), list()) ->
+    {ok, list(map())}.
 select(Conn, Table, Data, Extras) when is_atom(Table), is_map(Data) ->
-    Fun = fun(K, V, {Count, Statements, Vals}) ->
-        FCount = Count + 1,
-        {SQLOperator, Val} = val_to_operator(V),
-        Statement = lists:flatten([
-            erlang:atom_to_list(K), SQLOperator, "$", erlang:integer_to_list(FCount)
-        ]),
-        FStatement = Statements ++ [Statement],
-        FVal = Vals ++ [Val],
-        {FCount, FStatement, FVal}
-    end,
-    {_C, QueryStatements, SQLVals} = maps:fold(Fun, {0, [], []}, Data),
-    QueryStatement = lists:join(" AND ", QueryStatements),
-    Where =
-        case QueryStatement of
-            [] -> "";
-            Else -> [" WHERE ", Else]
-        end,
+    ?with_span(
+        <<"database_select">>,
+        #{attributes => #{table => Table}},
+        fun(_Ctx) ->
+            Fun = fun(K, V, {Count, Statements, Vals}) ->
+                FCount = Count + 1,
+                {SQLOperator, Val} = val_to_operator(V),
+                Statement = lists:flatten([
+                    erlang:atom_to_list(K), SQLOperator, "$", erlang:integer_to_list(FCount)
+                ]),
+                FStatement = Statements ++ [Statement],
+                FVal = Vals ++ [Val],
+                {FCount, FStatement, FVal}
+            end,
+            {_C, QueryStatements, SQLVals} = maps:fold(Fun, {0, [], []}, Data),
+            QueryStatement = lists:join(" AND ", QueryStatements),
+            Where =
+                case QueryStatement of
+                    [] -> "";
+                    Else -> [" WHERE ", Else]
+                end,
 
-    ExtraSQL = lists:map(fun extra_to_sql/1, Extras),
+            ExtraSQL = lists:map(fun extra_to_sql/1, Extras),
 
-    Statement = lists:flatten([
-        "SELECT * FROM ",
-        erlang:atom_to_list(Table),
-        Where,
-        ExtraSQL,
-        ";"
-    ]),
-    select(Conn, Statement, SQLVals).
+            Statement = lists:flatten([
+                "SELECT * FROM ",
+                erlang:atom_to_list(Table),
+                Where,
+                ExtraSQL,
+                ";"
+            ]),
+            select(Conn, Statement, SQLVals)
+        end
+    ).
 
 -spec select(epgsql:connection(), atom() | list(), map() | list()) -> {ok, list(map())}.
 select(Conn, Table, Data) when is_atom(Table), is_map(Data) ->

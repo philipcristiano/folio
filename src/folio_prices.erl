@@ -276,6 +276,13 @@ write_asset_prices(C, DT, Prices) ->
         Prices
     ).
 
+write_asset_price(C, DT, undefined, P) ->
+    ?LOG_ERROR(#{
+        message => "unknown asset for symbol",
+        dt => DT,
+        p => P
+    }),
+    ok;
 write_asset_price(C, DT, #{external_id := ID}, #{currency := Cu, amount := A, symbol := Symbol}) ->
     AssetPrice = #{
         source => <<"cryptowatch">>,

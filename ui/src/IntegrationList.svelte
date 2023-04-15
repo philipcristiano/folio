@@ -3,30 +3,19 @@
   import { onMount } from 'svelte';
   import Button from './Button.svelte';
 
+  import Balance from './Balance.svelte';
   import Integration from './Integration.svelte';
   import IntegrationSetup from './IntegrationSetup.svelte';
 
   export let transaction_filters = {};
 
-  let balance = "";
   let message = "";
   let address = "";
   let integrations = [];
 
-  async function getBalance() {
-    let response = await fetch("/balance", {
-        method: "GET",
-    });
-    let json = await response.json()
-    if (response.ok) {
-        balance = json.fiat_value;
-    } else {
-        message = json.message;
-    };
-  }
 
   async function getIntegrations() {
-    let response = await fetch("/integrations", {
+    let response = await fetch("/api/integrations", {
         method: "GET",
     });
     let json = await response.json()
@@ -40,7 +29,7 @@
   }
   async function syncIntegration(integration) {
     integration['accounts'] = [];
-    let response = await fetch("/integrations/" + integration.id + "/sync", {
+    let response = await fetch("/api/integrations/" + integration.id + "/sync", {
         method: "POST",
     });
     let json = await response.json()
@@ -53,7 +42,7 @@
   }
   async function deleteIntegration(integration) {
     if (integration.delete_enabled ) {
-      let response = await fetch("/integrations/" + integration.id, {
+      let response = await fetch("/api/integrations/" + integration.id, {
           method: "DELETE",
       });
       let json = await response.json()
@@ -73,7 +62,7 @@
   }
   async function getIntegrationAccounts(integration) {
     integration['accounts'] = [];
-    let response = await fetch("/integrations/" + integration.id + "/accounts", {
+    let response = await fetch("/api/integrations/" + integration.id + "/accounts", {
         method: "GET",
     });
     let json = await response.json()
@@ -86,7 +75,6 @@
   }
 
   onMount(() => {
-      getBalance();
       getIntegrations();
   });
 
@@ -98,7 +86,7 @@
 
 <div class="border-grey max-w-sm shadow-lg border-1 p-3 columns-1 columns-3xs">
   <div class="border-grey max-w-sm shadow-lg border-1 p-1">
-    <p class="text-lg">Balance: ${ balance }</p>
+    <Balance />
   </div>
 {#each integrations as integration (integration.id)}
 <div class="border-grey max-w-sm shadow-lg border-1 p-1">

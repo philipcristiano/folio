@@ -4,7 +4,7 @@
 
 -export([init/2, trails/0, handle_req/4, post_req/2]).
 
--define(PATH, <<"/integrations/:integration_id">>).
+-define(PATH, <<"/api/integrations/:integration_id">>).
 
 trails() ->
     Metadata = folio_http:make_delete(deleteIntegration, [integration_id], #{}),

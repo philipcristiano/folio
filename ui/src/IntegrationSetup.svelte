@@ -11,7 +11,7 @@
   let accounts = [];
 
   async function getIntegrationNames() {
-    let response = await fetch("/integration/add", {
+    let response = await fetch("/api/integration/add", {
         method: "GET",
     });
     let json = await response.json()
@@ -22,7 +22,7 @@
     };
   }
   async function getIntegrationSetup(Name) {
-    let response = await fetch("/integration/add/" + Name, {
+    let response = await fetch("/api/integration/add/" + Name, {
         method: "GET",
     });
     let json = await response.json()
@@ -44,7 +44,7 @@
   }
   async function setupIntegration(integration) {
 
-      let response = await fetch("/integration/add/" + integration.name, {
+      let response = await fetch("/api/integration/add/" + integration.name, {
           method: "POST",
           headers: {
               'Content-Type': 'application/json'

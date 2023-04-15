@@ -9,7 +9,7 @@ trails() ->
     Metadata = folio_http:make_get(getTransactions, Params, return_schema()),
     State = #{},
     [
-        trails:trail(<<"/transactions">>, ?MODULE, State, Metadata)
+        trails:trail(<<"/api/transactions">>, ?MODULE, State, Metadata)
     ].
 
 params() ->

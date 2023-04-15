@@ -29,8 +29,6 @@
 -export([
     sync_assets/0,
     sync_asset_prices/0,
-    asset_for_symbol/1,
-    asset_for_symbol/2,
     price_for_asset_id/1, price_for_asset_id/2
 ]).
 -record(state, {}).
@@ -95,25 +93,6 @@ sync_asset_prices_if_not_recent() ->
     case Assets of
         [] -> sync_asset_prices();
         _ -> ?LOG_INFO(#{message => "Recent asset prices found, not syncing on start"})
-    end.
-
-asset_for_symbol(SymBin) when is_binary(SymBin) ->
-    Sym = string:lowercase(SymBin),
-    C = fdb:checkout(),
-    {ok, Resp} = fdb:select(C, assets, #{symbol => Sym}),
-    fdb:checkin(C),
-    case Resp of
-        [] -> undefined;
-        [A] -> A;
-        _else -> undefined
-    end.
-asset_for_symbol(C, SymBin) when is_binary(SymBin) ->
-    Sym = string:lowercase(SymBin),
-    {ok, Resp} = fdb:select(C, assets, #{symbol => Sym}),
-    case Resp of
-        [] -> undefined;
-        [A] -> A;
-        _else -> undefined
     end.
 
 price_for_asset_id(<<"united-states-dollar">>) ->
@@ -183,8 +162,10 @@ handle_cast(sync_assets, State) ->
         #{attributes => #{}},
         fun(_Ctx) ->
             {ok, Assets} = folio_cryptowatch:get_assets(),
-            {ok, State1} = write_assets(Assets, State),
-            {noreply, State1}
+            C = fdb:checkout(),
+            ok = folio_assets:write_assets(C, Assets),
+            fdb:checkin(C),
+            {noreply, State}
         end
     );
 handle_cast(sync_asset_prices, State) ->
@@ -252,31 +233,27 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec write_assets(list(cryptowatch:asset()), any()) -> {ok, any()}.
-write_assets(Assets, State) ->
-    C = fdb:checkout(),
-    lists:foreach(
-        fun(#{id := ID, symbol := Symbol, name := Name}) ->
-            Data = #{
-                external_id => ID, symbol => Symbol, name => Name, source => <<"cryptowatch">>
-            },
-            {ok, _} = fdb:write(C, assets, Data)
-        end,
-        Assets
-    ),
-    fdb:checkin(C),
-    {ok, State}.
+
+start_timer() ->
+    timer:apply_interval(timer:minutes(51), ?MODULE, sync_asset_prices, []),
+    timer:apply_interval(timer:minutes(600), ?MODULE, sync_assets, []).
 
 write_asset_prices(C, DT, Prices) ->
-    lists:foreach(
-        fun(P = #{symbol := Symbol}) ->
-            Asset = asset_for_symbol(C, Symbol),
-            write_asset_price(C, DT, Asset, P)
-        end,
-        Prices
+    ?with_span(
+        <<"write_asset_prices">>,
+        #{attributes => #{}},
+        fun(_Ctx) ->
+            lists:foreach(
+                fun(P = #{symbol := Symbol}) ->
+                    Asset = folio_assets:asset_for_symbol(C, Symbol),
+                    write_asset_price(C, DT, Asset, P)
+                end,
+                Prices
+            )
+        end
     ).
 
-write_asset_price(C, DT, undefined, P) ->
+write_asset_price(_C, DT, undefined, P) ->
     ?LOG_ERROR(#{
         message => "unknown asset for symbol",
         dt => DT,
@@ -294,7 +271,3 @@ write_asset_price(C, DT, #{external_id := ID}, #{currency := Cu, amount := A, sy
     },
     fdb:write(C, asset_prices, AssetPrice),
     ok.
-
-start_timer() ->
-    timer:apply_interval(timer:minutes(51), ?MODULE, sync_asset_prices, []),
-    timer:apply_interval(timer:minutes(600), ?MODULE, sync_assets, []).

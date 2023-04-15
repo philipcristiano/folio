@@ -4,7 +4,7 @@
 
 -export([init/2, trails/0, handle_req/4, post_req/2]).
 
--define(LIST_PATH, <<"/integration/add">>).
+-define(LIST_PATH, <<"/api/integration/add">>).
 
 trails() ->
     Metadata = folio_http:make_get(listAddAbleAccounts, #{}),

@@ -14,7 +14,7 @@ add_fiat_value_for_accounts(C, Accounts) ->
         fun(_Ctx) ->
             lists:map(
                 fun(Act = #{symbol := Symbol, balance := Bal}) ->
-                    case folio_prices:asset_for_symbol(C, Symbol) of
+                    case folio_assets:asset_for_symbol(C, Symbol) of
                         undefined ->
                             Act;
                         #{external_id := AssetID} ->

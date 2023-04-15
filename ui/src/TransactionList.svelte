@@ -2,7 +2,9 @@
 
   import { onMount } from 'svelte';
   import Time from "svelte-time";
+  import Table from './Table.svelte';
   import FilterButton from './FilterButton.svelte';
+
 
   let message = "";
   export let transaction_filters = {};
@@ -21,7 +23,7 @@
   async function getTransactions(filters) {
     let params = transaction_filters_to_params(filters);
 
-    let path = "/transactions?" + new URLSearchParams(params);
+    let path = "/api/transactions?" + new URLSearchParams(params);
     let response = await fetch(path, {
         method: "GET",
     });
@@ -36,6 +38,16 @@
   onMount(() => {
       getTransactions();
   });
+
+  let fields = [
+    {name: "timestamp", title: "Datetime"},
+    {name: "provider_name", title: "Provider"},
+    {name: "symbol", title: "Symbol"},
+    {name: "direction", title: "Direction"},
+    {name: "amount", title: "Amount"},
+    {name: "description", title: "Description"},
+    {name: "exeternal_id", title: "Account ID"},
+  ];
 
 </script>
 
@@ -58,32 +70,6 @@
 
   </div>
 
-<div class="table bg-white text-left text-sm overflow-x-auto">
+<Table fields={fields} data={transactions} />
 
-  <div class="table-header-group bg-gray-50">
-      <div class="table-row">
-        <div class="table-cell px-6 py-2 font-medium text-gray-900">Datetime</div>
-        <div class="table-cell px-6 py-2 font-medium text-gray-900">Provider</div>
-        <div class="table-cell px-6 py-2 font-medium text-gray-900">Symbol</div>
-        <div class="table-cell px-6 py-2 font-medium text-gray-900">Direction</div>
-        <div class="table-cell px-6 py-2 font-medium text-gray-900">Amount</div>
-        <div class="table-cell px-6 py-2 font-medium text-gray-900">Description</div>
-        <div class="table-cell px-6 py-2 font-medium text-gray-900">Account ID</div>
-      </div>
-  </div>
-<div class="table-row-group">
-{#each transactions as tx}
-<div class="table-row hover:bg-gray-50" >
-    <div class="table-cell"><Time relative timestamp="{tx.timestamp}"/></div>
-    <div class="table-cell">{tx.provider_name}</div>
-    <div class="table-cell">{tx.symbol}</div>
-    <div class="table-cell">{tx.direction}</div>
-    <div class="table-cell">{tx.amount}</div>
-    <div class="table-cell">{tx.description}</div>
-    <div class="table-cell">{tx.external_id}</div>
-</div>
-{/each}
-</div>
-
-</div>
 </div>

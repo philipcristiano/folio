@@ -10,6 +10,7 @@
 
 	import IntegrationList from './IntegrationList.svelte';
 	import TransactionList from './TransactionList.svelte';
+	import AssetList from './AssetList.svelte';
 
   export let url = "";
 
@@ -20,11 +21,11 @@
 
 </script>
 <Router url="{url}">
+<body><div class="container mx-auto">
     <div class="sticky top-0 p-4 w-full">
       <Link to="/">Folio</Link>
       <Link to="/assets">Assets</Link>
     </div>
-<body><div class="container mx-auto">
 
   <div class="flex flex-row flex-wrap py-1">
     <BoxSidebar>

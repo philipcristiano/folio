@@ -2,7 +2,6 @@
 
   export let fields = [];
   export let data = [];
-  export let key = "id";
 
 </script>
 <div class="table bg-white text-left text-sm overflow-x-auto">
@@ -20,7 +19,12 @@
 {#each data as d }
   <div class="table-row hover:bg-gray-50" >
     {#each fields as field }
-      <div class="table-cell">{d[field.name]}</div>
+      <div class="table-cell">
+        {#if field.component }
+          <svelte:component this={field.component} value={d[field.name]} />
+        {:else}
+          {d[field.name]}
+        {/if} </div>
     {/each}
   </div>
 {/each}

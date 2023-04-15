@@ -27,7 +27,7 @@
       <Link to="/assets">Assets</Link>
     </div>
 
-  <div class="flex flex-row flex-wrap py-1">
+  <div class="flex flex-row flex-wrap py-1 bg:white">
     <BoxSidebar>
       <IntegrationList bind:transaction_filters={transaction_filters} />
     </BoxSidebar>

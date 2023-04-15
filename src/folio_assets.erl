@@ -39,4 +39,4 @@ asset_for_symbol(C, SymBin) when is_binary(SymBin) ->
     end.
 
 get_assets(C, Filters) ->
-    fdb:select(C, assets, Filters, [{order_by, external_id, asc}]).
+    fdb:select(C, v_assets, Filters, [{order_by, last_price, desc}]).

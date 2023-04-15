@@ -202,6 +202,64 @@ schema() ->
                         "ON i.id = iat.integration_id;"
                     ]
                 )
+        },
+        #{
+            type => view,
+            name => "v_assets",
+            column_names => [
+                "source",
+                "external_id",
+                "symbol",
+                "name",
+                "last_price",
+                "fiat_symbol",
+                "last_price_timestamp"
+            ],
+            query =>
+                lists:join(
+                    " ",
+                    [
+                        "SELECT",
+                        "  a.source AS source,",
+                        "  a.external_id AS external_id,",
+                        "  a.symbol AS symbol,",
+                        "  a.name as name,",
+                        "  ap2.amount as last_price,",
+                        "  ap.fiat_symbol AS fiat_symbol,",
+                        "  ap.timestamp AS last_price_timestamp",
+                        "",
+                        "FROM",
+                        "  (SELECT",
+                        "    source,",
+                        "    external_id,",
+                        "    symbol,",
+                        "    fiat_symbol,",
+                        "    max(timestamp) AS timestamp",
+                        "  FROM asset_prices",
+                        "  WHERE",
+                        "    source = 'cryptowatch'",
+                        "  GROUP BY (",
+                        "    source,",
+                        "    external_id,",
+                        "    symbol,",
+                        "    fiat_symbol)) AS ap",
+                        "INNER JOIN",
+                        "  assets a",
+                        "ON",
+                        "  a.source = ap.source AND",
+                        "  a.external_id = ap.external_id AND",
+                        "  a.symbol = ap.symbol",
+                        "",
+                        "LEFT JOIN",
+                        "  asset_prices ap2",
+                        "ON",
+                        "  ap.source = ap2.source AND",
+                        "  ap.external_id = ap2.external_id AND",
+                        "  ap.symbol = ap2.symbol AND",
+                        "  ap.timestamp = ap2.timestamp",
+                        ";"
+                    ]
+                )
         }
     ].
 

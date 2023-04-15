@@ -18,13 +18,13 @@ get_assets_test() ->
     Return = make_ref(),
 
     meck:expect(fdb, select, [
-        {[Conn, assets, Filters, '_'], {ok, Return}}
+        {[Conn, v_assets, Filters, '_'], {ok, Return}}
     ]),
 
     {ok, Return} = ?MUT:get_assets(Conn, Filters),
 
     [
-        {select, [Conn, assets, Filters, [{order_by, external_id, asc}]]}
+        {select, [Conn, v_assets, Filters, [{order_by, last_price, desc}]]}
     ] = folio_meck:history_calls(fdb),
 
     folio_meck:unload(?MOCK_MODS).

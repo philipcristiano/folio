@@ -2,6 +2,7 @@
 
   import { onMount } from 'svelte';
   import Table from './Table.svelte';
+  import TableElementTime from './TableElementTime.svelte';
   import Button from './Button.svelte';
 
 
@@ -10,6 +11,8 @@
     {name: "symbol", title: "Symbol"},
     {name: "external_id", title: "ID"},
     {name: "name", title: "Name"},
+    {name: "last_price", title: "Price"},
+    {name: "last_price_timestamp", title: "Updated", component: TableElementTime},
     ];
   let assets = [];
 

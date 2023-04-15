@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import Time from "svelte-time";
   import Table from './Table.svelte';
+  import TableElementTime from './TableElementTime.svelte';
   import FilterButton from './FilterButton.svelte';
 
 
@@ -40,7 +41,7 @@
   });
 
   let fields = [
-    {name: "timestamp", title: "Datetime"},
+    {name: "timestamp", title: "Datetime", component: TableElementTime},
     {name: "provider_name", title: "Provider"},
     {name: "symbol", title: "Symbol"},
     {name: "direction", title: "Direction"},

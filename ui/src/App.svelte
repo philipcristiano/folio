@@ -11,6 +11,7 @@
 	import IntegrationList from './IntegrationList.svelte';
 	import TransactionList from './TransactionList.svelte';
 	import AssetList from './AssetList.svelte';
+  import Balance from './Balance.svelte';
 
   export let url = "";
 
@@ -25,6 +26,7 @@
     <div class="sticky top-0 p-4 w-full">
       <Link to="/">Folio</Link>
       <Link to="/assets">Assets</Link>
+      <Balance />
     </div>
 
   <div class="flex flex-row flex-wrap py-1 bg:white">

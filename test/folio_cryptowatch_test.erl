@@ -11,6 +11,35 @@ load() ->
     ok = meck:expect(throttle, check, ['_', '_'], {ok, 1, 1}),
     ok.
 
+get_assets_test() ->
+    load(),
+
+    URL = url(<<"/assets">>),
+    Resp = to_json(#{
+        result => assets_result()
+    }),
+    ok = meck:expect(
+        hackney,
+        request,
+        [
+            {[get, URL, '_', [], [with_body]], {ok, 200, [], Resp}}
+        ]
+    ),
+
+    {ok, [Val1]} = ?MUT:get_assets(),
+
+    ?assertMatch(
+        #{
+            id := <<"1">>,
+            symbol := <<"btc">>,
+            name := <<"bitcoin">>
+        },
+
+        Val1
+    ),
+
+    folio_meck:unload(?MOCK_MODS).
+
 get_asset_prices_test() ->
     load(),
 
@@ -59,3 +88,13 @@ to_json(Obj) -> jsx:encode(Obj).
 
 url(Path) ->
     <<<<"https://api.cryptowat.ch">>/binary, Path/binary>>.
+
+assets_result() ->
+    [
+        #{
+            <<"id">> => 1,
+            <<"symbol">> => <<"btc">>,
+            <<"fiat">> => false,
+            <<"name">> => <<"bitcoin">>
+        }
+    ].

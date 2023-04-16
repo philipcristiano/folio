@@ -30,7 +30,8 @@ folio_init() ->
 get_assets() ->
     {ok, #{<<"result">> := Assets}} = request(<<"/assets">>),
     AssetMaps = lists:map(
-        fun(#{<<"sid">> := ID, <<"symbol">> := Symbol, <<"name">> := Name}) ->
+        fun(#{<<"id">> := IDInt, <<"symbol">> := Symbol, <<"name">> := Name}) ->
+            ID = erlang:integer_to_binary(IDInt),
             #{id => ID, symbol => Symbol, name => Name}
         end,
         Assets

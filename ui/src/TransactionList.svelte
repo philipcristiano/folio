@@ -47,7 +47,7 @@
     {name: "direction", title: "Direction"},
     {name: "amount", title: "Amount"},
     {name: "description", title: "Description"},
-    {name: "exeternal_id", title: "Account ID"},
+    {name: "external_id", title: "Account ID"},
   ];
 
 </script>

@@ -3,7 +3,6 @@
   import { onMount } from 'svelte';
   import Button from './Button.svelte';
 
-  import Balance from './Balance.svelte';
   import Integration from './Integration.svelte';
   import IntegrationSetup from './IntegrationSetup.svelte';
 
@@ -85,9 +84,7 @@
 {/if}
 
 <div class="border-grey max-w-sm shadow-lg border-1 p-3 columns-1 columns-3xs">
-  <div class="border-grey max-w-sm shadow-lg border-1 p-1">
-    <Balance />
-  </div>
+
 {#each integrations as integration (integration.id)}
 <div class="border-grey max-w-sm shadow-lg border-1 p-1">
     <Integration {...integration} />
@@ -101,4 +98,5 @@
 {/each}
 
 <IntegrationSetup />
+
 </div>

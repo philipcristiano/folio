@@ -19,4 +19,4 @@
   });
 
 </script>
-<p class="text-lg">Balance: ${ balance }</p>
+<span class="text-md">Balance: ${ balance }</span>

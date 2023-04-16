@@ -144,7 +144,8 @@ schema() ->
                 #{name => "integration_id", type => "uuid"},
                 #{name => "external_id", type => "text"},
                 #{name => "symbol", type => "text"},
-                #{name => "balance", type => "numeric"}
+                #{name => "balance", type => "numeric"},
+                #{name => "provider_asset_id", type => "text"}
             ],
             primary_key => ["integration_id", "external_id", "symbol"]
         },
@@ -161,7 +162,8 @@ schema() ->
                 #{name => "symbol", type => "text"},
                 #{name => "amount", type => "numeric"},
                 #{name => "type", type => "text"},
-                #{name => "description", type => "text"}
+                #{name => "description", type => "text"},
+                #{name => "provider_asset_id", type => "text"}
             ],
             primary_key => ["integration_id", "external_id", "source_id", "line"]
         },

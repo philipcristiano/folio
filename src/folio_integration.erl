@@ -48,9 +48,11 @@
 -type integration_account_transactions() :: list(integration_account_transaction).
 
 -export_type([external_asset/0]).
--type external_asset() :: #{
-    symbol => binary()
-}.
+-type external_asset() ::
+    #{
+        symbol => binary()
+    }
+    | #{symbol => binary(), id => binary()}.
 
 -export_type([integration_account_transaction/0]).
 -type integration_account_transaction() :: #{
@@ -198,19 +200,20 @@ write_account(C, #{id := IntegrationID}, #{id := ID, balances := Balances}) ->
     AData = #{external_id => ID, integration_id => IntegrationID},
     {ok, _} = fdb:write(C, integration_accounts, AData),
     lists:foreach(
-        fun(#{balance := Balance, asset := #{symbol := Symbol}}) ->
+        fun(#{balance := Balance, asset := Asset}) ->
+            AssetInfo = external_asset_to_asset_info(Asset),
             BalData = #{
                 integration_id => IntegrationID,
                 external_id => ID,
-                symbol => Symbol,
                 balance => decimal:to_binary(Balance)
             },
+            WriteBalData = maps:merge(BalData, AssetInfo),
             ?LOG_DEBUG(#{
                 message => write_cb_account,
                 account_data => AData,
-                balance_data => BalData
+                balance_data => WriteBalData
             }),
-            {ok, _} = fdb:write(C, integration_account_balances, BalData)
+            {ok, _} = fdb:write(C, integration_account_balances, WriteBalData)
         end,
         Balances
     ),
@@ -240,11 +243,12 @@ write_account_transaction(C, #{id := IntegrationID}, #{id := AccountID}, #{
     line := Line,
     datetime := DT,
     direction := Direction,
-    asset := #{symbol := Symbol},
+    asset := Asset,
     amount := Amount,
     type := Type,
     description := Description
 }) ->
+    AssetInfo = external_asset_to_asset_info(Asset),
     Data = #{
         integration_id => IntegrationID,
         external_id => AccountID,
@@ -252,12 +256,17 @@ write_account_transaction(C, #{id := IntegrationID}, #{id := AccountID}, #{
         line => Line,
         timestamp => DT,
         direction => Direction,
-        symbol => Symbol,
         amount => decimal:to_binary(Amount),
         type => Type,
         description => Description
     },
-    fdb:write(C, integration_account_transactions, Data).
+    WriteData = maps:merge(Data, AssetInfo),
+    fdb:write(C, integration_account_transactions, WriteData).
+
+external_asset_to_asset_info(#{symbol := S, id := ID}) ->
+    #{symbol => S, provider_asset_id => ID};
+external_asset_to_asset_info(#{symbol := S}) ->
+    #{symbol => S}.
 
 -spec write_account_transactions(
     epgdql:connect(),

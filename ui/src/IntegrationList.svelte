@@ -19,8 +19,6 @@
     });
     let json = await response.json()
     if (response.ok) {
-        json.integrations.forEach(i =>
-            getIntegrationAccounts(i));
         integrations = json.integrations;
     } else {
         message = json.message;
@@ -58,19 +56,6 @@
   }
   async function filterForIntegration(integration) {
       transaction_filters = {"integration_id": integration.id};
-  }
-  async function getIntegrationAccounts(integration) {
-    integration['accounts'] = [];
-    let response = await fetch("/api/integrations/" + integration.id + "/accounts", {
-        method: "GET",
-    });
-    let json = await response.json()
-    if (response.ok) {
-        integration['accounts'] = json.accounts;
-        integrations = integrations;
-    } else {
-        message = json.message;
-    };
   }
 
   onMount(() => {

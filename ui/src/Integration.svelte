@@ -12,12 +12,14 @@
 
 
   async function getIntegrationAccounts() {
-    let response = await fetch("/api/integrations/" + id + "/accounts", {
+    let params = {integration_id : id};
+    let path = "/api/holdings?" + new URLSearchParams(params);
+    let response = await fetch(path, {
         method: "GET",
     });
     let json = await response.json()
     if (response.ok) {
-        accounts = json.accounts;
+        accounts = json.holdings;
         fiat_total = json.fiat_total;
     } else {
         message = json.message;

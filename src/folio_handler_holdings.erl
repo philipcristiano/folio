@@ -1,13 +1,14 @@
--module(folio_handler_integration_accounts).
+-module(folio_handler_holdings).
 
 -include_lib("kernel/include/logger.hrl").
 
 -export([init/2, trails/0, handle_req/4, post_req/2]).
 
--define(PATH, <<"/api/integrations/:integration_id/accounts">>).
+-define(PATH, <<"/api/holdings">>).
 
 trails() ->
-    Metadata = folio_http:make_get(getAccounts, [integration_id], return_schema()),
+    Params = params(),
+    Metadata = folio_http:make_get(getHoldings, Params, return_schema()),
     State = #{},
     [
         trails:trail(?PATH, ?MODULE, State, Metadata)
@@ -16,22 +17,46 @@ trails() ->
 return_schema() ->
     #{
         type => object,
-        description => <<"Accounts">>,
+        description => <<"holdings">>,
         properties => #{
-            <<"accounts">> => #{
+            <<"holdings">> => #{
                 type => array,
                 additionalProperties => true,
                 properties => #{},
-                description => <<"List of accounts">>
+                description => <<"List of holdings">>
             }
         }
     }.
+
+params() ->
+    lists:map(
+        fun(N) ->
+            #{
+                in => query,
+                name => N,
+                description => "Filter by property",
+                required => false,
+                schema => #{type => string}
+            }
+        end,
+        filters()
+    ).
+
+filters() ->
+    [integration_id].
 
 init(Req, Opts) ->
     MatchReq = Req#{path => ?PATH},
     folio_http_session:init(Req),
     {specified_handler, MatchReq, Opts}.
 
+handle_req(
+    Req = #{method := <<"GET">>},
+    _Params = #{integration_id := undefined},
+    _Body,
+    State
+) ->
+    {Req, 400, #{}, State};
 handle_req(
     Req = #{method := <<"GET">>},
     _Params = #{integration_id := IntegrationID},
@@ -44,7 +69,7 @@ handle_req(
     FiatTotal = folio_accounts:fiat_value_of_accounts(AccountsWithFiat),
     fdb:checkin(C),
 
-    {Req, 200, #{fiat_total => FiatTotal, accounts => AccountsWithFiat}, State}.
+    {Req, 200, #{fiat_total => FiatTotal, holdings => AccountsWithFiat}, State}.
 
 post_req(_Response, _State) ->
     ok.

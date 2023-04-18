@@ -58,8 +58,9 @@ handle_req(
         params => Params
     }),
     Filters = maps:filter(fun(_K, V) -> V /= undefined end, Params),
+    HasPriceFilters = Filters#{last_price => {'>', "0"}},
     C = fdb:checkout(),
-    {ok, Assets} = folio_assets:get_assets(C, Filters),
+    {ok, Assets} = folio_assets:get_annotated_assets(C, HasPriceFilters),
     fdb:checkin(C),
 
     {Req, 200, #{assets => Assets}, State}.

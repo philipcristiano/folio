@@ -50,16 +50,18 @@ accounts(State = #{address := Addr}) ->
         } = Resp} = request_balance(Addr),
     Tokens = maps:get(<<"tokens">>, Resp, []),
 
-    EthBalance = to_balance(<<"ETH">>, EthRawBalance, 18),
+    EthBalance = to_balance(<<"native">>, <<"ETH">>, EthRawBalance, 18),
 
     TokenBalances = lists:map(
         fun(
             #{
-                <<"tokenInfo">> := #{<<"symbol">> := Symbol, <<"decimals">> := Decimals},
+                <<"tokenInfo">> := #{
+                    <<"address">> := TokenAddr, <<"symbol">> := Symbol, <<"decimals">> := Decimals
+                },
                 <<"rawBalance">> := TokenRawBalance
             }
         ) ->
-            to_balance(Symbol, TokenRawBalance, Decimals)
+            to_balance(TokenAddr, Symbol, TokenRawBalance, Decimals)
         end,
         Tokens
     ),
@@ -68,12 +70,13 @@ accounts(State = #{address := Addr}) ->
 
     {complete, Accounts, State}.
 
-to_balance(Symbol, RawBalance, Decimal) ->
+to_balance(TokenAddr, Symbol, RawBalance, Decimal) ->
     Balance = to_value(RawBalance, Decimal),
     #{
         balance => Balance,
-        asset => #{symbol => Symbol}
+        asset => #{symbol => Symbol, id => TokenAddr}
     }.
+
 to_value(RawBalance, DecimalBin) when is_binary(DecimalBin) ->
     Decimal = erlang:binary_to_integer(DecimalBin),
     to_value(RawBalance, Decimal);
@@ -137,7 +140,9 @@ account_transactions(
 op_to_txs(Addr, #{
     <<"timestamp">> := Timestamp,
     <<"transactionHash">> := TXHash,
-    <<"tokenInfo">> := #{<<"symbol">> := Symbol, <<"decimals">> := Decimals},
+    <<"tokenInfo">> := #{
+        <<"address">> := TokenAddr, <<"symbol">> := Symbol, <<"decimals">> := Decimals
+    },
     <<"type">> := <<"transfer">> = Type,
     <<"value">> := Value,
     <<"from">> := From,
@@ -155,7 +160,7 @@ op_to_txs(Addr, #{
             line => <<"">>,
             datetime => qdate:to_date(Timestamp),
             direction => Direction,
-            asset => #{symbol => Symbol},
+            asset => #{symbol => Symbol, id => TokenAddr},
             amount => DValue,
             type => undefined,
             description => Type
@@ -181,7 +186,7 @@ api_tx_to_txs(Addr, #{
             line => <<"">>,
             datetime => qdate:to_date(Timestamp),
             direction => Direction,
-            asset => #{symbol => <<"ETH">>},
+            asset => #{symbol => <<"ETH">>, id => <<"native">>},
             amount => DValue,
             type => undefined,
             description => <<"">>

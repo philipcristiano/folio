@@ -5,6 +5,9 @@
 -define(MUT, folio_ethplorer).
 -define(MOCK_MODS, [folio_credentials_store, hackney, throttle]).
 
+-define(TOKEN_ADDR_LRC, <<"test_token_addr_lrc">>).
+-define(TOKEN_ADDR_ETH, <<"native">>).
+
 accounts_address_test() ->
     load(),
 
@@ -33,8 +36,14 @@ accounts_address_test() ->
     ?assertMatch(
         #{
             balances := [
-                #{balance := {334792427825, -11}, asset := #{symbol := <<"ETH">>}},
-                #{balance := {2210668711958, -8}, asset := #{symbol := <<"LRC">>}}
+                #{
+                    balance := {334792427825, -11},
+                    asset := #{symbol := <<"ETH">>, id := ?TOKEN_ADDR_ETH}
+                },
+                #{
+                    balance := {2210668711958, -8},
+                    asset := #{symbol := <<"LRC">>, id := ?TOKEN_ADDR_LRC}
+                }
             ],
             id := Addr
         },
@@ -71,7 +80,7 @@ empty_accounts_address_test() ->
     ?assertMatch(
         #{
             balances := [
-                #{balance := {0, 0}, asset := #{symbol := <<"ETH">>}}
+                #{balance := {0, 0}, asset := #{symbol := <<"ETH">>, id := ?TOKEN_ADDR_ETH}}
             ],
             id := Addr
         },
@@ -142,7 +151,7 @@ accounts_transactions_test() ->
             direction := in,
             source_id :=
                 <<"tx1">>,
-            asset := #{symbol := <<"LRC">>},
+            asset := #{symbol := <<"LRC">>, id := ?TOKEN_ADDR_LRC},
             type := undefined
         },
         TX1
@@ -155,7 +164,7 @@ accounts_transactions_test() ->
             direction := out,
             source_id :=
                 <<"tx2">>,
-            asset := #{symbol := <<"LRC">>},
+            asset := #{symbol := <<"LRC">>, id := ?TOKEN_ADDR_LRC},
             type := undefined
         },
         TX2
@@ -168,7 +177,7 @@ accounts_transactions_test() ->
             direction := in,
             source_id :=
                 <<"ethtx1">>,
-            asset := #{symbol := <<"ETH">>},
+            asset := #{symbol := <<"ETH">>, id := ?TOKEN_ADDR_ETH},
             type := undefined
         },
         ETHTX1
@@ -181,7 +190,7 @@ accounts_transactions_test() ->
             direction := out,
             source_id :=
                 <<"ethtx2">>,
-            asset := #{symbol := <<"ETH">>},
+            asset := #{symbol := <<"ETH">>, id := ?TOKEN_ADDR_ETH},
             type := undefined
         },
         ETHTX2
@@ -258,4 +267,4 @@ address_tx(Timestamp, TXHash, From, To, Value) ->
     }.
 
 token_info(lrc) ->
-    #{<<"symbol">> => <<"LRC">>, <<"decimals">> => <<"18">>}.
+    #{<<"address">> => ?TOKEN_ADDR_LRC, <<"symbol">> => <<"LRC">>, <<"decimals">> => <<"18">>}.

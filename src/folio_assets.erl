@@ -49,8 +49,14 @@ asset_for_symbol(C, SymBin) when is_binary(SymBin) ->
 
 % Entry point
 try_to_set_unset_provider_assets(C) ->
-    {ok, Balances} = fdb:select(C, integration_account_balances, #{}),
-    lists:foreach(fun(B) -> try_to_set_unset_provider_assets(C, B) end, Balances).
+    ?with_span(
+        <<"try_to_set_unset_provider_assets">>,
+        #{attributes => #{}},
+        fun(_Ctx) ->
+            {ok, Balances} = fdb:select(C, integration_account_balances, #{}),
+            lists:foreach(fun(B) -> try_to_set_unset_provider_assets(C, B) end, Balances)
+        end
+    ).
 
 % For each balance, try to see if anything needs to be done
 try_to_set_unset_provider_assets(_C, #{provider_asset_id := null}) ->

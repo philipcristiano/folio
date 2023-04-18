@@ -223,7 +223,7 @@ blockstream_tx_to_transactions(
                 line => <<"">>,
                 datetime => BlockTime,
                 type => undefined,
-                asset => #{symbol => <<"BTC">>},
+                asset => #{symbol => <<"BTC">>, id => <<"native">>},
                 direction => out,
                 description => <<"">>
             }),
@@ -249,7 +249,7 @@ blockstream_tx_to_transactions(
                 datetime => BlockTime,
                 amount => sats_to_btc(Value),
                 type => undefined,
-                asset => #{symbol => <<"BTC">>},
+                asset => #{symbol => <<"BTC">>, id => <<"native">>},
                 direction => in,
                 description => <<"">>
             },
@@ -325,7 +325,7 @@ to_account(Addr, Balance) ->
         balances => [
             #{
                 balance => Balance,
-                asset => #{symbol => <<"BTC">>}
+                asset => #{symbol => <<"BTC">>, id => <<"native">>}
             }
         ]
     }.

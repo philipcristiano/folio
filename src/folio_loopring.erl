@@ -76,16 +76,17 @@ api_balances_to_balances(APIB, _State = #{tokens := TokenMap}) ->
                 <<"decimals">> := Decimals,
                 <<"symbol">> := Symbol
             } = maps:get(TID, TokenMap),
-            to_balance(Symbol, Total, Decimals)
+            to_balance(Symbol, TID, Total, Decimals)
         end,
         APIB
     ).
 
-to_balance(Symbol, RawBalance, Decimal) ->
+to_balance(Symbol, TokenIDInt, RawBalance, Decimal) ->
     Balance = to_value(RawBalance, Decimal),
+    TokenID = erlang:integer_to_binary(TokenIDInt),
     #{
         balance => Balance,
-        asset => #{symbol => Symbol}
+        asset => #{symbol => Symbol, id => TokenID}
     }.
 
 to_value(RawBalance, DecimalBin) when is_binary(DecimalBin) ->
@@ -162,13 +163,14 @@ transfer_to_txs(
         <<"symbol">> := Symbol,
         <<"amount">> := Value,
         <<"memo">> := Description,
-        <<"storageInfo">> := #{<<"tokenId">> := TokenID}
+        <<"storageInfo">> := #{<<"tokenId">> := TokenIDInt}
     },
     AccountID,
     TokenMap
 ) ->
-    #{<<"decimals">> := Decimals} = maps:get(TokenID, TokenMap),
+    #{<<"decimals">> := Decimals} = maps:get(TokenIDInt, TokenMap),
     Amount = to_value(Value, Decimals),
+    TokenID = erlang:integer_to_binary(TokenIDInt),
     Direction =
         case erlang:binary_to_integer(AccountID) == ReceivingAccountID of
             true -> in;
@@ -180,7 +182,7 @@ transfer_to_txs(
             line => <<"">>,
             datetime => qdate:to_date(trunc(TimestampMS / 1000)),
             direction => Direction,
-            asset => #{symbol => Symbol},
+            asset => #{symbol => Symbol, id => TokenID},
             amount => Amount,
             type => undefined,
             description => Description

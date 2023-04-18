@@ -52,24 +52,18 @@ init(Req, Opts) ->
 
 handle_req(
     Req = #{method := <<"GET">>},
-    _Params = #{integration_id := undefined},
+    Params,
     _Body,
     State
 ) ->
-    {Req, 400, #{}, State};
-handle_req(
-    Req = #{method := <<"GET">>},
-    _Params = #{integration_id := IntegrationID},
-    _Body,
-    State
-) ->
+    RequestedFilters = maps:filter(fun(_K, V) -> V /= undefined end, Params),
+    HasPriceFilters = RequestedFilters#{asset_balance => {'>', "0"}},
     C = fdb:checkout(),
-    {ok, Accounts} = folio_integration:integration_accounts(C, IntegrationID),
-    AccountsWithFiat = folio_accounts:add_fiat_value_for_accounts(C, Accounts),
-    FiatTotal = folio_accounts:fiat_value_of_accounts(AccountsWithFiat),
+    {ok, AccountBalances} = folio_accounts:get_annotated_account_balances(C, HasPriceFilters),
     fdb:checkin(C),
+    FiatTotal = folio_accounts:fiat_value_of_accounts(AccountBalances),
 
-    {Req, 200, #{fiat_total => FiatTotal, holdings => AccountsWithFiat}, State}.
+    {Req, 200, #{fiat_total => FiatTotal, holdings => AccountBalances}, State}.
 
 post_req(_Response, _State) ->
     ok.

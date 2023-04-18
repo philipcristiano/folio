@@ -25,7 +25,8 @@
 <body><div class="container mx-auto">
     <div class="sticky top-0 p-4 w-full">
       <Link to="/">Folio</Link>
-      <Link to="/assets">Assets</Link>
+      <Link to="/prices">Prices</Link>
+      <Link to="/source_assets">Source Assets</Link>
       <Balance />
     </div>
 
@@ -36,7 +37,7 @@
 
     <BoxContent>
 
-      <Route path="/assets">
+      <Route path="/prices">
         <AssetList />
       </Route>
 

@@ -9,7 +9,7 @@ load() ->
     folio_meck:load(?MOCK_MODS),
     ok.
 
-get_assets_test() ->
+get_annotated_assets_test() ->
     load(),
 
     Conn = fdb_test:expect_fdb_checkout(),
@@ -21,7 +21,7 @@ get_assets_test() ->
         {[Conn, v_assets, Filters, '_'], {ok, Return}}
     ]),
 
-    {ok, Return} = ?MUT:get_assets(Conn, Filters),
+    {ok, Return} = ?MUT:get_annotated_assets(Conn, Filters),
 
     [
         {select, [Conn, v_assets, Filters, [{order_by, last_price, desc}]]}

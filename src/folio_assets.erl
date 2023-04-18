@@ -3,7 +3,12 @@
 -include_lib("kernel/include/logger.hrl").
 -include_lib("opentelemetry_api/include/otel_tracer.hrl").
 
--export([write_assets/2, asset_for_symbol/1, asset_for_symbol/2, get_assets/2]).
+-export([
+    write_assets/2,
+    asset_for_symbol/1, asset_for_symbol/2,
+    get_assets/2,
+    get_annotated_assets/2
+]).
 
 -spec write_assets(epgsql:connection(), list(cryptowatch:asset())) -> ok.
 write_assets(C, Assets) ->
@@ -39,4 +44,7 @@ asset_for_symbol(C, SymBin) when is_binary(SymBin) ->
     end.
 
 get_assets(C, Filters) ->
+    fdb:select(C, assets, Filters).
+
+get_annotated_assets(C, Filters) ->
     fdb:select(C, v_assets, Filters, [{order_by, last_price, desc}]).

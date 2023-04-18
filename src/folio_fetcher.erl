@@ -142,6 +142,7 @@ handle_cast({sync, Integration = #{id := _ID, provider_name := _PN}}, State) ->
         {ok, Accounts} = folio_account_provider:fetch_integration_accounts(Integration),
         C = fdb:checkout(),
         ok = folio_integration:write_accounts(C, Integration, Accounts),
+        folio_assets:try_to_set_unset_provider_assets(C),
         fdb:checkin(C),
 
         lists:foreach(

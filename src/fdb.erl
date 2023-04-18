@@ -216,6 +216,20 @@ schema() ->
             primary_key => ["integration_id", "external_id", "source_id", "line"]
         },
         #{
+            type => table,
+            name => "provider_asset_id_mapping",
+            columns => [
+                #{name => "provider_name", type => "text"},
+                #{name => "provider_asset_id", type => "text"},
+                #{name => "asset_source", type => "text"},
+                #{name => "asset_external_id", type => "text"}
+            ],
+            primary_key => [
+                "provider_name", "provider_asset_id", "asset_source"
+            ]
+        },
+
+        #{
             type => view,
             name => "v_annotated_transactions",
             column_names => [
@@ -250,6 +264,50 @@ schema() ->
                         "FROM integrations i",
                         "JOIN integration_account_transactions iat",
                         "ON i.id = iat.integration_id;"
+                    ]
+                )
+        },
+        #{
+            type => view,
+            name => "v_annotated_account_balances",
+            column_names => [
+                "provider_name",
+                "integration_id",
+                "external_id",
+                "asset_balance",
+                "symbol",
+                "fiat_symbol",
+                "last_price_timestamp",
+                "fiat_value"
+            ],
+            query =>
+                lists:join(
+                    " ",
+                    [
+                        "SELECT",
+                        "  i.provider_name AS provider_name,",
+                        "  iab.integration_id AS integration_id,",
+                        "  iab.external_id AS external_id,",
+                        "  iab.balance AS asset_balance,",
+                        "  iab.symbol AS symbol,",
+                        "  cap.fiat_symbol AS fiat_symbol,",
+                        "  cap.timestamp AS last_price_timestamp,",
+                        "  cap.amount * iab.balance AS fiat_value",
+                        "",
+                        "FROM",
+                        "  integration_account_balances IAB",
+                        "JOIN",
+                        "  integrations i on iab.integration_id = i.id",
+                        "LEFT JOIN",
+                        "  provider_asset_id_mapping paim ON",
+                        "    i.provider_name = paim.provider_name AND",
+                        "    iab.provider_asset_id = paim.provider_asset_id",
+                        "LEFT JOIN",
+                        "  v_current_asset_prices cap",
+                        "ON",
+                        "  paim.asset_source = cap.source AND",
+                        "  paim.asset_external_id = cap.external_id",
+                        ";"
                     ]
                 )
         },

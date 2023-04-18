@@ -4,12 +4,12 @@
   let balance = "";
 
   async function getBalance() {
-    let response = await fetch("/api/balance", {
+    let response = await fetch("/api/holdings", {
         method: "GET",
     });
     let json = await response.json()
     if (response.ok) {
-        balance = json.fiat_value;
+        balance = json.fiat_total;
     } else {
         message = json.message;
     };

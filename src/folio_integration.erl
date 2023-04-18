@@ -269,7 +269,7 @@ external_asset_to_asset_info(#{symbol := S}) ->
     #{symbol => S}.
 
 -spec write_account_transactions(
-    epgdql:connect(),
+    epgdql:connection(),
     folio_integration:integration(),
     folio_integration:account(),
     folio_integration:account_transactions()

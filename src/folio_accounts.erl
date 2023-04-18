@@ -4,8 +4,12 @@
 
 -export([
     add_fiat_value_for_accounts/2,
-    fiat_value_of_accounts/1
+    fiat_value_of_accounts/1,
+    get_annotated_account_balances/2
 ]).
+
+get_annotated_account_balances(C, Filters) ->
+    fdb:select(C, v_annotated_account_balances, Filters, [{order_by, fiat_value, desc}]).
 
 add_fiat_value_for_accounts(C, Accounts) ->
     ?with_span(
@@ -34,6 +38,7 @@ fiat_value_of_accounts(Accounts) ->
             FiatValues = lists:filtermap(
                 fun(A) ->
                     case A of
+                        #{fiat_value := null} -> false;
                         #{fiat_value := FV} -> {true, FV};
                         _ -> false
                     end

@@ -50,10 +50,10 @@
         {:else} <p class="text-lg">[UNDEFINED]</p>
         {/if}
 
-        {#each accounts as integration_account (integration_account.external_id, integration_account.symbol)}
+        {#each accounts as integration_account }
         <p class="text-base">
         { integration_account.symbol }
-        { integration_account.balance }
+        { integration_account.asset_balance }
         {#if integration_account.fiat_value }
         $ {integration_account.fiat_value}
         {/if}

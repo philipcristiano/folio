@@ -26,7 +26,6 @@
     <div class="sticky top-0 p-4 w-full">
       <Link to="/">Folio</Link>
       <Link to="/prices">Prices</Link>
-      <Link to="/source_assets">Source Assets</Link>
       <Balance />
     </div>
 

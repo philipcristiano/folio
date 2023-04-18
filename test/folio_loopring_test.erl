@@ -36,8 +36,8 @@ accounts_address_test() ->
     ?assertMatch(
         #{
             balances := [
-                #{balance := {163599196, -9}, asset := #{symbol := <<"ETH">>}},
-                #{balance := {729951761, -8}, asset := #{symbol := <<"LRC">>}}
+                #{balance := {163599196, -9}, asset := #{symbol := <<"ETH">>, id := <<"0">>}},
+                #{balance := {729951761, -8}, asset := #{symbol := <<"LRC">>, id := <<"1">>}}
             ],
             id := AccountID
         },
@@ -88,7 +88,7 @@ accounts_transactions_test() ->
             direction := in,
             source_id :=
                 <<"0x05fadf8737e63be58f15a38ac2a11db41298a9624d1d460d3360f0e74f17276f">>,
-            asset := #{symbol := <<"LRC">>},
+            asset := #{symbol := <<"LRC">>, id := <<"1">>},
             type := undefined
         },
         TX1

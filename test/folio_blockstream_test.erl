@@ -238,7 +238,7 @@ tx_p2sh_out(Addr) ->
 
 acct(ID, Bal) ->
     #{
-        balances => [#{balance => Bal, asset => #{symbol => <<"BTC">>}}],
+        balances => [#{balance => Bal, asset => #{symbol => <<"BTC">>, id => <<"native">>}}],
         id => ID
     }.
 

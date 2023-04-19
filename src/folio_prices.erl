@@ -71,9 +71,13 @@ init([]) ->
 
 sync_assets() ->
     gen_server:cast(?MODULE, sync_assets).
+sync_assets(Mod, ModState) ->
+    gen_server:cast(?MODULE, {sync_assets, Mod, ModState}).
 
 sync_asset_prices() ->
     gen_server:cast(?MODULE, sync_asset_prices).
+sync_asset_prices(Mod, ModState) ->
+    gen_server:cast(?MODULE, {sync_asset_prices, Mod, ModState}).
 
 sync_assets_if_none() ->
     C = fdb:checkout(),
@@ -157,27 +161,51 @@ handle_cast(sync_assets, State) ->
     ?LOG_INFO(#{
         message => "Starting asset sync"
     }),
+    Mods = [folio_cryptowatch],
+    lists:foreach(
+        fun(Mod) ->
+            {ok, ModState} = Mod:get_assets_init(),
+            sync_assets(Mod, ModState)
+        end,
+        Mods
+    ),
+    {noreply, State};
+handle_cast({sync_assets, Mod, ModState}, State) ->
     ?with_span(
         <<"sync_assets">>,
-        #{attributes => #{}},
+        #{attributes => #{module => Mod}},
         fun(_Ctx) ->
-            {ok, Assets} = folio_cryptowatch:get_assets(),
+            {Completeness, Assets, NextModState} = Mod:get_assets(ModState),
+            Source = Mod:name(),
             C = fdb:checkout(),
-            ok = folio_assets:write_assets(C, Assets),
+            ok = folio_assets:write_assets(C, Source, Assets),
             fdb:checkin(C),
+            case Completeness of
+                complete -> ok;
+                incomplete -> sync_assets(Mod, NextModState)
+            end,
+
             {noreply, State}
         end
     );
 handle_cast(sync_asset_prices, State) ->
+    Mods = [folio_cryptowatch],
+    lists:foreach(
+        fun(Mod) ->
+            {ok, ModState} = Mod:get_asset_prices_init(),
+            sync_asset_prices(Mod, ModState)
+        end,
+        Mods
+    ),
+    {noreply, State};
+handle_cast({sync_asset_prices, Mod, ModState}, State) ->
     ?with_span(
         <<"sync_asset_prices">>,
         #{attributes => #{}},
         fun(_Ctx) ->
-            C = fdb:checkout(),
-
             Now = os:system_time(second),
             DT = qdate:to_date(Now),
-            {ok, Prices} = folio_cryptowatch:get_asset_prices(),
+            {Completeness, Prices, NextModState} = Mod:get_asset_prices(ModState),
 
             ?LOG_DEBUG(#{
                 message => asset_prices,
@@ -185,9 +213,14 @@ handle_cast(sync_asset_prices, State) ->
                 datetime => DT
             }),
 
-            write_asset_prices(C, DT, Prices),
-
+            Source = Mod:name(),
+            C = fdb:checkout(),
+            write_asset_prices(C, Source, DT, Prices),
             fdb:checkin(C),
+            case Completeness of
+                complete -> ok;
+                incomplete -> sync_asset_prices(Mod, NextModState)
+            end,
             {noreply, State}
         end
     ).
@@ -238,7 +271,7 @@ start_timer() ->
     timer:apply_interval(timer:minutes(51), ?MODULE, sync_asset_prices, []),
     timer:apply_interval(timer:minutes(600), ?MODULE, sync_assets, []).
 
-write_asset_prices(C, DT, Prices) ->
+write_asset_prices(C, Source, DT, Prices) ->
     ?with_span(
         <<"write_asset_prices">>,
         #{attributes => #{}},
@@ -246,23 +279,26 @@ write_asset_prices(C, DT, Prices) ->
             lists:foreach(
                 fun(P = #{symbol := Symbol}) ->
                     Asset = folio_assets:asset_for_symbol(C, Symbol),
-                    write_asset_price(C, DT, Asset, P)
+                    write_asset_price(C, Source, DT, Asset, P)
                 end,
                 Prices
             )
         end
     ).
 
-write_asset_price(_C, DT, undefined, P) ->
+write_asset_price(_C, Source, DT, undefined, P) ->
     ?LOG_ERROR(#{
         message => "unknown asset for symbol",
+        source => Source,
         dt => DT,
         p => P
     }),
     ok;
-write_asset_price(C, DT, #{external_id := ID}, #{currency := Cu, amount := A, symbol := Symbol}) ->
+write_asset_price(C, Source, DT, #{external_id := ID}, #{
+    currency := Cu, amount := A, symbol := Symbol
+}) ->
     AssetPrice = #{
-        source => <<"cryptowatch">>,
+        source => Source,
         symbol => Symbol,
         external_id => ID,
         amount => decimal:to_binary(A),

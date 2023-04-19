@@ -4,7 +4,7 @@
 -include_lib("opentelemetry_api/include/otel_tracer.hrl").
 
 -export([
-    write_assets/2,
+    write_assets/3,
     asset_for_symbol/2,
     get_assets/2,
     get_annotated_assets/2,
@@ -12,12 +12,12 @@
     try_to_set_unset_provider_assets/1
 ]).
 
--spec write_assets(epgsql:connection(), list(cryptowatch:asset())) -> ok.
-write_assets(C, Assets) ->
+-spec write_assets(epgsql:connection(), binary(), list(cryptowatch:asset())) -> ok.
+write_assets(C, Source, Assets) ->
     lists:foreach(
         fun(#{id := ID, symbol := Symbol, name := Name}) ->
             Data = #{
-                external_id => ID, symbol => Symbol, name => Name, source => <<"cryptowatch">>
+                external_id => ID, symbol => Symbol, name => Name, source => Source
             },
             {ok, _} = fdb:write(C, assets, Data)
         end,

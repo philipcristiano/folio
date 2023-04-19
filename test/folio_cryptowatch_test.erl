@@ -26,7 +26,8 @@ get_assets_test() ->
         ]
     ),
 
-    {ok, [Val1]} = ?MUT:get_assets(),
+    {ok, S} = ?MUT:get_assets_init(),
+    {complete, [Val1], S} = ?MUT:get_assets(S),
 
     ?assertMatch(
         #{
@@ -61,7 +62,8 @@ get_asset_prices_test() ->
         ]
     ),
 
-    {ok, [Val1, Val2]} = ?MUT:get_asset_prices(),
+    {ok, S} = ?MUT:get_asset_prices_init(),
+    {complete, [Val1, Val2], S} = ?MUT:get_asset_prices(S),
 
     ?assertMatch(
         #{

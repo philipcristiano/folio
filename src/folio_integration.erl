@@ -8,9 +8,8 @@
     delete_integration/2
 ]).
 
--export([integrations/0, integrations/1, integration_by_id/2]).
+-export([integrations/1, integration_by_id/2]).
 -export([set_integration_state/2, get_integration_state/1, annotate_with_state/1]).
--export([integration_accounts/1, integration_accounts/2]).
 
 -export([
     write_account/3, write_accounts/3, write_account_transaction/4, write_account_transactions/4
@@ -141,12 +140,6 @@ annotate_with_state(Int = #{id := _ID}) ->
 annotate_with_state(List) when is_list(List) ->
     lists:map(fun annotate_with_state/1, List).
 
-integrations() ->
-    C = fdb:checkout(),
-    R = integrations(C),
-    fdb:checkin(C),
-    R.
-
 -spec integrations(epgsql:connection()) -> {ok, [integration()]}.
 integrations(C) ->
     {ok, A} = fdb:select(C, integrations, #{}),
@@ -156,33 +149,6 @@ integrations(C) ->
 integration_by_id(C, ID) ->
     {ok, [I]} = fdb:select(C, integrations, #{id => ID}),
     {ok, I}.
-
--spec integration_accounts(epgsql:connection()) -> {ok, [account()]}.
-integration_accounts(C) ->
-    ?with_span(
-        <<"integration_accounts">>,
-        #{attributes => #{}},
-        fun(_Ctx) ->
-            Query =
-                "SELECT iab.integration_id as integration_id, iab.symbol as symbol, iab.balance as balance, iab.external_id as external_id FROM integration_account_balances As iab WHERE iab.balance > 0;",
-            {ok, A} = fdb:select(C, Query, []),
-            {ok, A}
-        end
-    ).
-
--spec integration_accounts(epgsql:connection(), id()) -> {ok, [account()]}.
-integration_accounts(C, IntegrationID) ->
-    ?with_span(
-        <<"integration_accounts">>,
-        #{attributes => #{integration_id => IntegrationID}},
-        fun(_Ctx) ->
-            Query =
-                "SELECT iab.integration_id as integration_id, iab.symbol as symbol, iab.balance as balance, iab.external_id as external_id FROM integration_account_balances As iab WHERE iab.integration_id = $1 AND iab.balance > 0;",
-            {ok, A} = fdb:select(C, Query, [IntegrationID]),
-            %{ok, A} = fdb:select(C, integration_accounts, #{integration_id => IntegrationID}),
-            {ok, A}
-        end
-    ).
 
 -spec transactions(epgsql:connection()) -> {ok, [account_transactions()]}.
 transactions(C) ->

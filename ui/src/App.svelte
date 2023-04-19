@@ -23,7 +23,7 @@
 </script>
 <Router url="{url}">
 <body><div class="container mx-auto">
-    <div class="sticky top-0 p-4 w-full">
+    <div class="sticky top-0 p-4 w-full bg-gray-50">
       <Link to="/">Folio</Link>
       <Link to="/prices">Prices</Link>
       <Balance />

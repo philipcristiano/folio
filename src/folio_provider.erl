@@ -4,18 +4,21 @@
 -include_lib("opentelemetry_api/include/otel_tracer.hrl").
 
 -export([
-    providers/0,
     provider_by_name/1,
+    providers_by_types/1,
     provider_setup_properties/1
 ]).
 
 -export_type([name/0]).
 -type name() :: binary().
 
+-export_type([provider_type/0]).
+-type provider_type() :: exchange | chain | price.
+
 -export_type([provider/0]).
 -type provider() :: #{
     name := name(),
-    type := exchange | chain,
+    type := provider_type(),
     mod := atom()
 }.
 
@@ -55,6 +58,11 @@ providers() ->
             name => <<"loopring">>,
             type => chain,
             mod => folio_loopring
+        },
+        #{
+            name => <<"cryptowatch">>,
+            type => price,
+            mod => folio_cryptowatch
         }
     ].
 
@@ -65,6 +73,15 @@ provider_by_name(Name) ->
         {value, V} -> V;
         _ -> throw(not_found)
     end.
+
+-spec providers_by_types(list(provider_type())) -> list().
+providers_by_types(Types) ->
+    lists:filter(
+        fun(#{type := T}) ->
+            lists:member(T, Types)
+        end,
+        providers()
+    ).
 
 -spec provider_setup_properties(binary()) -> map().
 provider_setup_properties(Name) ->

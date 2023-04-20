@@ -4,7 +4,9 @@
 -include_lib("opentelemetry_api/include/otel_tracer.hrl").
 
 -export([folio_init/0]).
--export([get_assets/0, get_asset_prices/0]).
+-export([name/0]).
+-export([get_assets/1, get_asset_prices/1]).
+-export([get_assets_init/0, get_asset_prices_init/0]).
 
 -export_type([asset_id/0]).
 -type asset_id() :: binary().
@@ -26,8 +28,13 @@
 folio_init() ->
     folio_throttle:setup(?MODULE, 1, 5000).
 
--spec get_assets() -> {ok, list(asset())}.
-get_assets() ->
+name() -> <<"cryptowatch">>.
+
+get_assets_init() ->
+    {ok, #{}}.
+
+-spec get_assets(any()) -> {complete, list(asset()), any()}.
+get_assets(State) ->
     {ok, #{<<"result">> := Assets}} = request(<<"/assets">>),
     AssetMaps = lists:map(
         fun(#{<<"id">> := IDInt, <<"symbol">> := Symbol, <<"name">> := Name}) ->
@@ -36,9 +43,11 @@ get_assets() ->
         end,
         Assets
     ),
-    {ok, AssetMaps}.
+    {complete, AssetMaps, State}.
 
-get_asset_prices() ->
+get_asset_prices_init() ->
+    {ok, #{}}.
+get_asset_prices(State) ->
     {ok, #{<<"result">> := RawPriceMap}} = request(<<"/markets/prices">>),
     PriceData = parse_market_prices(RawPriceMap),
 
@@ -65,7 +74,7 @@ get_asset_prices() ->
         end,
         FilteredPrices
     ),
-    {ok, Prices}.
+    {complete, Prices, State}.
 
 parse_market_prices(RawPriceMap) ->
     NewMap = maps:map(

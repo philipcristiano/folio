@@ -36,9 +36,7 @@
     };
   }
 
-  onMount(() => {
-      getTransactions();
-  });
+  onMount(() => {});
 
   let fields = [
     {name: "timestamp", title: "Datetime", component: TableElementTime},

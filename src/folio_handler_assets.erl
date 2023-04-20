@@ -27,7 +27,16 @@ params() ->
     ).
 
 filters() ->
-    [integration_id].
+    [price_greater_than].
+
+request_params_to_fdb_filters(Filters) ->
+    FilterList = maps:to_list(Filters),
+    FDBFilters = lists:map(fun request_filter_to_fdb_filter/1, FilterList),
+    NoUndefinedFilters = lists:filter(fun(F) -> F /= undefined end, FDBFilters),
+    maps:from_list(NoUndefinedFilters).
+
+request_filter_to_fdb_filter({_N, undefined}) -> undefined;
+request_filter_to_fdb_filter({price_greater_than, V}) -> {last_price, {'>', V}}.
 
 return_schema() ->
     #{
@@ -57,10 +66,10 @@ handle_req(
         message => params,
         params => Params
     }),
-    Filters = maps:filter(fun(_K, V) -> V /= undefined end, Params),
-    HasPriceFilters = Filters#{last_price => {'>', "0"}},
+
+    Filters = request_params_to_fdb_filters(Params),
     C = fdb:checkout(),
-    {ok, Assets} = folio_assets:get_annotated_assets(C, HasPriceFilters),
+    {ok, Assets} = folio_assets:get_annotated_assets(C, Filters),
     fdb:checkin(C),
 
     {Req, 200, #{assets => Assets}, State}.

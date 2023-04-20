@@ -161,13 +161,13 @@ handle_cast(sync_assets, State) ->
     ?LOG_INFO(#{
         message => "Starting asset sync"
     }),
-    Mods = [folio_cryptowatch],
+    Providers = folio_provider:providers_by_types([price]),
     lists:foreach(
-        fun(Mod) ->
+        fun(#{mod := Mod}) ->
             {ok, ModState} = Mod:get_assets_init(),
             sync_assets(Mod, ModState)
         end,
-        Mods
+        Providers
     ),
     {noreply, State};
 handle_cast({sync_assets, Mod, ModState}, State) ->
@@ -189,13 +189,13 @@ handle_cast({sync_assets, Mod, ModState}, State) ->
         end
     );
 handle_cast(sync_asset_prices, State) ->
-    Mods = [folio_cryptowatch],
+    Providers = folio_provider:providers_by_types([price]),
     lists:foreach(
-        fun(Mod) ->
+        fun(#{mod := Mod}) ->
             {ok, ModState} = Mod:get_asset_prices_init(),
             sync_asset_prices(Mod, ModState)
         end,
-        Mods
+        Providers
     ),
     {noreply, State};
 handle_cast({sync_asset_prices, Mod, ModState}, State) ->

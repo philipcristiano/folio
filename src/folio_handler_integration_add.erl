@@ -14,7 +14,7 @@ trails() ->
     ].
 
 trails_for_integrations() ->
-    Providers = folio_provider:providers(),
+    Providers = folio_provider:providers_by_types([chain, exchange]),
     lists:map(
         fun(Provider = #{name := Name}) ->
             Spec = props_to_schema(folio_provider:provider_setup_properties(Name)),
@@ -69,7 +69,7 @@ handle_req(
     _Body,
     State
 ) ->
-    Integrations = folio_provider:providers(),
+    Integrations = folio_provider:providers_by_types([chain, exchange]),
     Names = lists:map(fun(#{name := N}) -> N end, Integrations),
     {Req, 200, #{integrations => Names}, State};
 handle_req(

@@ -52,6 +52,11 @@ connect() ->
     User = folio_config:pg(user, "folio_admin"),
     DB = folio_config:pg(database, "folio"),
     SSL = true,
+    SSLOpts = [
+        {verify, verify_peer},
+        {server_name_indication, Host},
+        {cacerts, public_key:cacerts_get()}
+    ],
     Port = folio_config:pg(port, "5432"),
     ?LOG_INFO(#{
         message => "Connecting to database",
@@ -59,6 +64,7 @@ connect() ->
         ssl => SSL,
         user => User,
         port => Port,
+        ssl_opts => SSLOpts,
         database => DB
     }),
 
@@ -67,6 +73,7 @@ connect() ->
         username => User,
         password => folio_config:pg(password, "pass"),
         ssl => SSL,
+        ssl_opts => SSLOpts,
         database => DB,
         port => Port,
         timeout => 4000

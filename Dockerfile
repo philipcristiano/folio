@@ -24,6 +24,7 @@ COPY --from=BUILDER /app.tar.gz /app.tar.gz
 WORKDIR /app
 EXPOSE 8000
 
+RUN apt-get update && apt-get install -y openssl ca-certificates && apt-get clean
 RUN tar -xzf /app.tar.gz
 
 CMD ["/app/bin/folio_release", "foreground"]

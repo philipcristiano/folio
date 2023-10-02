@@ -22,7 +22,7 @@ jobs:
       repository: philipcristiano/folio
       qemu_platforms: amd64,arm64
       docker_platforms: linux/amd64,linux/arm64/v8
-      timeout: 25
+      timeout: 45
 
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}

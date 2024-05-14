@@ -1,32 +1,11 @@
 # App
 
-local.config
-ebin/
-/folio.d
-/priv/public/ui/
-/_rel
-
-.eunit
-*.o
-*.beam
-*.plt
-erl_crash.dump
-.concrete/DEV_MODE
-*.coverdata
-
-# rebar 2.x
-.rebar
-rel/example_project
-ebin/*.beam
-deps
-
-# rebar 3
-.rebar3
-_build/
-_checkouts/
-
-# erlang.mk
-.erlang.mk
-
 # Postgres
 pgdata
+
+target
+
+
+.DS_STORE
+
+/static/tailwind.css

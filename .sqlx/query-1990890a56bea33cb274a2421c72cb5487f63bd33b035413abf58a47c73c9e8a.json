@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n    INSERT INTO folio_user ( id, name )\n        VALUES ( $1, $2 )\n    ON CONFLICT (id) DO UPDATE\n        SET name = EXCLUDED.name;\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1990890a56bea33cb274a2421c72cb5487f63bd33b035413abf58a47c73c9e8a"
+}

@@ -1,23 +1,17 @@
 use clap::Parser;
-use futures::try_join;
-use serde::{Deserialize, Serialize};
-use std::fs;
-use std::ops::Deref;
 use std::str;
 
 use axum::{
-    extract::{FromRef, Path, State},
-    http::StatusCode,
+    extract::{State},
     response::{IntoResponse, Redirect, Response},
-    routing::{get, post},
-    Form, Router,
+    routing::{get}, Router,
 };
-use axum_extra::extract::Query;
 use std::net::SocketAddr;
 
 use maud::html;
 use tower_cookies::CookieManagerLayer;
 
+mod config;
 mod dates;
 mod html;
 mod svg_icon;
@@ -27,8 +21,6 @@ use rust_embed::RustEmbed;
 #[derive(RustEmbed, Clone)]
 #[folder = "static/"]
 struct StaticAssets;
-
-mod external;
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -42,39 +34,7 @@ pub struct Args {
     log_json: bool,
 }
 
-#[serde_with::serde_as]
-#[derive(Clone, Debug, Deserialize)]
-struct AppConfig {
-    database_url: String,
-    auth: service_conventions::oidc::OIDCConfig,
-    #[serde_as(as = "serde_with::base64::Base64")]
-    database_encryption_key: [u8; 32],
-}
-
-#[derive(FromRef, Clone, Debug)]
-struct AppState {
-    auth: service_conventions::oidc::AuthConfig,
-    db: PgPool,
-    database_encryption_key: [u8; 32],
-    #[from_ref(skip)]
-    db_spike: PgPool,
-}
-
-impl AppState {
-    fn from_config(item: AppConfig, db: PgPool, db_spike: PgPool) -> Self {
-        let auth_config = service_conventions::oidc::AuthConfig {
-            oidc_config: item.auth,
-            post_auth_path: "/logged_in".to_string(),
-            scopes: vec!["profile".to_string(), "email".to_string()],
-        };
-        AppState {
-            auth: auth_config,
-            db,
-            database_encryption_key: item.database_encryption_key,
-            db_spike,
-        }
-    }
-}
+use folio::{AppState, AppConfig, AppError};
 
 use sqlx::postgres::PgPool;
 use sqlx::postgres::PgPoolOptions;
@@ -121,7 +81,7 @@ async fn main() {
     let args = Args::parse();
     service_conventions::tracing::setup(args.log_level);
 
-    let app_config = read_app_config(args.config_file);
+    let app_config = crate::config::read_app_config(args.config_file);
 
     // Start by making a database connection.
     tracing::info!("connecting to database");
@@ -151,7 +111,7 @@ async fn main() {
         .route("/logged_in", get(handle_logged_in))
         .nest("/oidc", oidc_router.with_state(app_state.auth.clone()))
         .nest_service("/static", serve_assets)
-        .nest("/external", external::setup())
+        .nest("/external", folio::external::setup())
         .with_state(app_state.clone())
         .layer(CookieManagerLayer::new())
         .layer(tower_http::compression::CompressionLayer::new())
@@ -168,15 +128,6 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-fn read_app_config(path: String) -> AppConfig {
-    let config_file_error_msg = format!("Could not read config file {}", path);
-    let config_file_contents = fs::read_to_string(path).expect(&config_file_error_msg);
-    let app_config: AppConfig =
-        toml::from_str(&config_file_contents).expect("Problems parsing config file");
-
-    app_config
-}
-
 async fn health() -> Response {
     "OK".into_response()
 }
@@ -187,7 +138,7 @@ async fn root(
 ) -> Result<Response, AppError> {
     if let Some(_user) = user {
         let mut tx = app_state.db.begin().await?;
-        let ecs = external::services::ExternalConnection::get_all(&mut tx).await?;
+        let ecs = folio::external::services::ExternalConnection::get_all(&mut tx).await?;
         tx.commit().await?;
         Ok(html::maud_page(html! {
               div class="flex flex-col lg:flex-row"{
@@ -236,29 +187,4 @@ async fn handle_logged_in(
     let user = FolioUser::from(user);
     user.ensure_in_db(&app_state.db).await?;
     Ok(Redirect::to("/").into_response())
-}
-
-// Make our own error that wraps `anyhow::Error`.
-struct AppError(anyhow::Error);
-
-// Tell axum how to convert `AppError` into a response.
-impl IntoResponse for AppError {
-    fn into_response(self) -> Response {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Something went wrong: {}", self.0),
-        )
-            .into_response()
-    }
-}
-
-// This enables using `?` on functions that return `Result<_, anyhow::Error>` to turn them into
-// `Result<_, AppError>`. That way you don't need to do that manually.
-impl<E> From<E> for AppError
-where
-    E: Into<anyhow::Error>,
-{
-    fn from(err: E) -> Self {
-        Self(err.into())
-    }
 }

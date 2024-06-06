@@ -1,30 +1,13 @@
-FROM node:14 as NODE_BUILDER
-ADD ui /app/src/ui
-WORKDIR /app/src/ui
-RUN npm install
-RUN npm run build
+FROM rust:1.77-bookworm as builder
+WORKDIR /usr/src/app
 
-FROM erlang:25 AS BUILDER
-RUN mkdir -p /app/folio
-ADD Makefile rebar3 rebar.* /app/folio
-WORKDIR /app/folio
-RUN make compile
-COPY --from=NODE_BUILDER /app/src/priv/public /app/folio/priv/public
+COPY --from=d3fk/tailwindcss:stable /tailwindcss /usr/local/bin/tailwindcss
+COPY . .
+RUN cargo install --path .
 
-ADD . /app/folio
-RUN make compile
-RUN make tar && mv /app/folio/_build/default/rel/folio_release/folio_release-*.tar.gz /app.tar.gz
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y procps ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /usr/local/cargo/bin/folio-migrate /usr/local/bin/folio-migrate
+COPY --from=builder /usr/local/cargo/bin/folio /usr/local/bin/folio
 
-FROM debian:bullseye
-
-ENV LOG_LEVEL=info
-RUN apt-get update && apt-get install -y openssl && apt-get clean
-COPY --from=BUILDER /app.tar.gz /app.tar.gz
-
-WORKDIR /app
-EXPOSE 8000
-
-RUN apt-get update && apt-get install -y openssl ca-certificates && apt-get clean
-RUN tar -xzf /app.tar.gz
-
-CMD ["/app/bin/folio_release", "foreground"]
+ENTRYPOINT ["/usr/local/bin/folio"]

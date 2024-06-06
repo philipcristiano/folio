@@ -76,6 +76,7 @@ impl ExternalConnection {
 
         Ok(r)
     }
+
 }
 
 #[derive(Debug, Clone)]
@@ -172,4 +173,17 @@ impl ExternalConnectionCredentials {
 
         Ok(r)
     }
+}
+
+pub async fn sync_connection(c: &ExternalConnection, app_state: &crate::AppState) -> anyhow::Result<()> {
+
+    let integration = c.integration.as_str();
+    match integration {
+        "bitcoin" => bitcoin::sync_connection(c, app_state).await?,
+        _ =>  panic!("Integration not defined"),
+
+    }
+
+    Ok(())
+
 }

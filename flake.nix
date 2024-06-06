@@ -21,6 +21,7 @@
                 rust-analyzer
                 pkgs.postgresql_16
                 pkgs.openssl # native-tls is included in cargo, needs work to remove
+                pkgs.pkg-config
                 pkgs.foreman
                 pkgs.tailwindcss
                 pkgs.atlas
@@ -31,7 +32,11 @@
             ];
             shellHook = ''
               export PGDATA=$PWD/pgdata
-              export DATABASE_URL="postgres://et@localhost/et?sslmode=disable"
+              export DATABASE_URL="postgres://folio@localhost/folio?sslmode=disable"
+              export PGHOST=localhost
+              export PGUSER=folio
+              export PGDATABASE=folio
+              export PGSSLMODE=disable
             '';
           };
         }

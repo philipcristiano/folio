@@ -1,0 +1,1 @@
+database_url = "postgres://postgres:postgres@localhost:5432/et?sslmode=disable"

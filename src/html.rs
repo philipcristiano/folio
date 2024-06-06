@@ -1,4 +1,3 @@
-use crate::svg_icon;
 use maud::{html, DOCTYPE};
 
 pub fn maud_page(content: maud::Markup) -> maud::Markup {

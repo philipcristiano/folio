@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n    SELECT\n        id,\n        external_connection_id,\n        external_id,\n        ownership as \"ownership: _\"\n\n    FROM accounts\n    WHERE external_connection_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "external_connection_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "external_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "ownership: _",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0f30e9cc852727a7cb618b9a6d2b1748daba1dcab4bba89742c221b9995dd6ba"
+}

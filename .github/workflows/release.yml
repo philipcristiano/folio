@@ -1,0 +1,20 @@
+# release-plz creates the release/tag which won't trigger again for the commit for `push_main`
+name: Docker Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+
+  docker_push:
+    name: "Push docker image"
+    uses: "philipcristiano/workflows/.github/workflows/docker-build-push.yml@main"
+    with:
+      repository: ${{ github.repository }}
+      timeout: 25
+
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}

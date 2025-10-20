@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n    UPDATE accounts\n    SET ownership = $1\n    WHERE id = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "eed6ed749415bf68e677fe0f7dc4a32482a7ab0bf4e2210459587f68e12e8313"
+}

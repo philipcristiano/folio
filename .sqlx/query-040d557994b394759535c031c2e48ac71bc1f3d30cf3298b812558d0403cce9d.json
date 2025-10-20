@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n    INSERT INTO external_connections ( id, integration, name )\n    VALUES ( $1, $2, $3 )\n    ON CONFLICT (id) DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "040d557994b394759535c031c2e48ac71bc1f3d30cf3298b812558d0403cce9d"
+}

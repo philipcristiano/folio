@@ -12,10 +12,9 @@ use maud::html;
 use tower_cookies::CookieManagerLayer;
 
 mod config;
-mod dates;
+mod files;
 mod html;
 mod svg_icon;
-mod sync_manager;
 use rust_embed::RustEmbed;
 
 #[derive(RustEmbed, Clone)]
@@ -98,11 +97,6 @@ async fn main() {
 
     let app_state = AppState::from_config(app_config, pool, pool_spike);
 
-    let app_state2 = app_state.clone();
-    tokio::spawn(async move {
-        sync_manager::sync_all(app_state2).await;
-    });
-
     let oidc_router = service_conventions::oidc::router(app_state.auth.clone());
     let serve_assets = axum_embed::ServeEmbed::<StaticAssets>::new();
     let app = Router::new()
@@ -110,16 +104,14 @@ async fn main() {
         .route("/", get(root))
         .route("/logged_in", get(handle_logged_in))
         .nest("/oidc", oidc_router.with_state(app_state.auth.clone()))
+        .nest("/files", files::router())
         .nest_service("/static", serve_assets)
-        .nest("/external", folio::external::setup())
         .with_state(app_state.clone())
         .layer(CookieManagerLayer::new())
         .layer(tower_http::compression::CompressionLayer::new())
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
-                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
-        )
+        .layer(service_conventions::tracing_http::trace_layer(
+            tracing::Level::INFO,
+        ))
         .route("/_health", get(health));
 
     let addr: SocketAddr = args.bind_addr.parse().expect("Expected bind addr");
@@ -133,43 +125,31 @@ async fn health() -> Response {
 }
 
 async fn root(
-    State(app_state): State<AppState>,
-    user: Option<service_conventions::oidc::OIDCUser>,
+    State(_app_state): State<AppState>,
+    user: Result<
+        Option<service_conventions::oidc::OIDCUser>,
+        service_conventions::oidc::OIDCUserError,
+    >,
 ) -> Result<Response, AppError> {
-    if let Some(_user) = user {
-        let mut tx = app_state.db.begin().await?;
-        let ecs = folio::external::services::ExternalConnection::get_all(&mut tx).await?;
-        tx.commit().await?;
+    if let Ok(Some(_user)) = user {
         Ok(html::maud_page(html! {
-              div class="flex flex-col lg:flex-row"{
               (html::sidebar())
               div #main class="main" {
 
-                    @for ec in ecs {
-
-                        div
-                            hx-get={"/external/services/" (ec.integration) "/f/get/" (ec.id)}
-                            hx-target="this"
-                            hx-swap="innerHTML"
-                            hx-trigger="load"
-                            {}
-
-                    }
-
-                    form
-                      method="post"
-                      action="/external/services/bitcoin/f/add" {
-                        div
-                            hx-get={"/external/services/bitcoin/f/add"}
-                            hx-target="this"
-                            hx-swap="innerHTML"
-                            hx-trigger="load"
-                            {}
-                        input type="submit" {}
-                      }
+                    // form
+                    //   method="post"
+                    //   action="/external/services/bitcoin/f/add" {
+                    //     div
+                    //         hx-get={"/external/services/bitcoin/f/add"}
+                    //         hx-target="this"
+                    //         hx-swap="innerHTML"
+                    //         hx-trigger="load"
+                    //         {}
+                    //     input type="submit" {}
+                    //   }
                   }
 
-        }})
+        })
         .into_response())
     } else {
         Ok(html::maud_page(html! {

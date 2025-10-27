@@ -1,14 +1,21 @@
-use clap::Parser;
-use serde::{Deserialize, Serialize};
+use clap::{Parser, Subcommand};
+use serde::Deserialize;
 use std::fs;
 
 #[derive(Parser, Debug)]
 pub struct Args {
     #[arg(short, long, default_value = "folio.toml")]
     config_file: String,
+    #[command(subcommand)]
+    command: Commands,
 }
 
-#[serde_with::serde_as]
+#[derive(Subcommand, Debug)]
+enum Commands {
+    Migrate,
+    Print,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 struct AppConfig {
     database_url: String,
@@ -28,8 +35,22 @@ async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     println!("Args {args:?}");
     let config = read_app_config(args.config_file);
-    let pool = sqlx::PgPool::connect(&config.database_url).await.expect("Connection attempt");
+    let pool = sqlx::PgPool::connect(&config.database_url)
+        .await
+        .expect("Connection attempt");
     let target_schema = include_str!("../../schema/schema.sql").to_string();
-    declare_schema::migrate_from_string(&target_schema, &pool).await?;
+
+    match &args.command {
+        Commands::Migrate {} => {
+            declare_schema::migrate_from_string(&target_schema, &pool).await?;
+        }
+        Commands::Print => {
+            let steps =
+                declare_schema::generate_migrations_from_string(&target_schema, &pool).await?;
+            for step in steps {
+                println!("{}", step)
+            }
+        }
+    }
     Ok(())
 }

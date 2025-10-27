@@ -1,8 +1,6 @@
-pub mod accounts;
-pub mod external;
 pub mod html;
+pub mod model_types;
 pub mod svg_icon;
-pub mod transactions;
 use serde::{Deserialize, Serialize};
 
 use axum::{

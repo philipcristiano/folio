@@ -13,3 +13,12 @@ Postgres
 ### Migrations
 
 Migrations are handled with Atlas.
+
+## Developing
+
+```
+nix-shell
+initdb
+./db_init
+```
+

@@ -19,24 +19,13 @@
             buildInputs = [
                 rust-bin.stable.latest.default
                 rust-analyzer
-                pkgs.postgresql_16
-                pkgs.openssl # native-tls is included in cargo, needs work to remove
+                pkgs.postgresql_18
                 pkgs.pkg-config
-                pkgs.foreman
-                pkgs.tailwindcss
-                pkgs.atlas
-            ] ++
-              pkgs.lib.optionals pkgs.stdenv.isDarwin [
-                darwin.apple_sdk.frameworks.Security # Should only be for darwin
-                darwin.apple_sdk.frameworks.SystemConfiguration
             ];
             shellHook = ''
               export PGDATA=$PWD/pgdata
-              export DATABASE_URL="postgres://folio@localhost/folio?sslmode=disable"
-              export PGHOST=localhost
-              export PGUSER=folio
               export PGDATABASE=folio
-              export PGSSLMODE=disable
+              export PGUSER=folio
             '';
           };
         }

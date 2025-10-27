@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n    SELECT\n        id,\n        integration,\n        name\n    FROM external_connections\n    WHERE id = $1\n            ",
+  "query": "\n    SELECT\n        id,\n        name,\n        filetype\n    FROM uploaded_files\n    WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -10,13 +10,13 @@
       },
       {
         "ordinal": 1,
-        "name": "integration",
-        "type_info": "Varchar"
+        "name": "name",
+        "type_info": "Text"
       },
       {
         "ordinal": 2,
-        "name": "name",
-        "type_info": "Varchar"
+        "name": "filetype",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -30,5 +30,5 @@
       false
     ]
   },
-  "hash": "5fa3f4f7c3c2d56a0678939839edad2240f49a2fca7bc4cad650f4111efff606"
+  "hash": "0e1a3c7bb416bcd3ccab7fb59559b19ffff63cb904a880ef13b3a1f993bd5aef"
 }

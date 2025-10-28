@@ -1,4 +1,4 @@
-use maud::{html, DOCTYPE};
+use maud::{DOCTYPE, html};
 
 pub fn maud_page(content: maud::Markup) -> maud::Markup {
     html! {
@@ -46,6 +46,7 @@ pub fn sidebar() -> maud::Markup {
         div class="sidebar" {
           h2 { "Files:" }
           ul {
+            li { a href="/files" {"List"}}
             li { a href="/files/upload" {"Upload"}}
 
           }

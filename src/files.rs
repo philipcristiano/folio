@@ -1,9 +1,8 @@
-
-
 use axum::{
-    extract::{State},
+    Router,
+    extract::State,
     response::{IntoResponse, Redirect, Response},
-    routing::{get}, Router,
+    routing::get,
 };
 
 use std::marker::PhantomData;
@@ -15,26 +14,29 @@ pub struct New;
 #[derive(Debug)]
 pub struct Saved;
 
-#[derive(Clone, Debug,  sqlx::Type)]
+#[derive(Clone, Debug, sqlx::Type)]
 #[sqlx(transparent)]
 pub struct FileID(uuid::Uuid);
 // Encode implementation for sending data to Postgres
 impl From<uuid::Uuid> for FileID {
-
     fn from(id: uuid::Uuid) -> Self {
         Self(id)
     }
 }
 
-
 pub fn router() -> Router<AppState> {
     Router::new()
-    .route("/upload", get(handle_file_upload_get).post(handle_file_upload_post).layer(axum::extract::DefaultBodyLimit::max(1024 * 1024 * 100)))
+        .route(
+            "/upload",
+            get(handle_file_upload_get)
+                .post(handle_file_upload_post)
+                .layer(axum::extract::DefaultBodyLimit::max(1024 * 1024 * 100)),
+        )
+        .route("/", get(handle_file_list))
     //.route("/list", get(handle_file_list)))
-
 }
 
-use folio::{AppState, AppError};
+use folio::{AppError, AppState};
 use maud::html;
 async fn handle_file_upload_get(
     State(_app_state): State<AppState>,
@@ -54,7 +56,8 @@ async fn handle_file_upload_get(
                 }
               }
 
-        }).into_response())
+        })
+        .into_response())
     } else {
         Ok(Redirect::to("/").into_response())
     }
@@ -71,24 +74,59 @@ async fn handle_file_upload_post(
     tracing::info!("Post!");
     if let Ok(Some(_user)) = user {
         while let Some(field) = multipart.next_field().await.unwrap() {
-                let name = field.name().unwrap().to_string();
-                let filename = field.file_name().unwrap().to_string();
+            let name = field.name().unwrap().to_string();
+            let filename = field.file_name().unwrap().to_string();
 
-                let data = field.bytes().await.unwrap();
-                let new_file = UploadedFile::new(filename.clone(), "csv".to_string(), data.to_vec());
+            let data = field.bytes().await.unwrap();
+            let new_file = UploadedFile::new(filename.clone(), "csv".to_string(), data.to_vec());
 
-                let mut c = app_state.db.begin().await?;
-                new_file.insert(&mut c).await?;
-                c.commit().await?;
+            let mut c = app_state.db.begin().await?;
+            new_file.insert(&mut c).await?;
+            c.commit().await?;
 
-                tracing::info!(name=&name, filename=filename, length=data.len(), "file upload ");
+            tracing::info!(
+                name = &name,
+                filename = filename,
+                length = data.len(),
+                "file upload "
+            );
         }
-        Ok(Redirect::to("/files/upload").into_response())
+        Ok(Redirect::to("/files").into_response())
     } else {
         Ok(Redirect::to("/").into_response())
     }
 }
 
+async fn handle_file_list(
+    State(app_state): State<AppState>,
+    user: Result<
+        Option<service_conventions::oidc::OIDCUser>,
+        service_conventions::oidc::OIDCUserError,
+    >,
+) -> Result<Response, AppError> {
+    if let Ok(Some(_user)) = user {
+        let mut c = app_state.db.begin().await?;
+        let files = UploadedFileMetadata::get_all(&mut c).await?;
+        c.rollback().await?;
+        Ok(crate::html::maud_page(html! {
+              (crate::html::sidebar())
+              div #main class="main" {
+
+                ul {
+                    @for file in files {
+                        li { (file.name) }
+                    }
+                }
+
+
+              }
+
+        })
+        .into_response())
+    } else {
+        Ok(Redirect::to("/").into_response())
+    }
+}
 
 #[derive(Debug)]
 pub struct UploadedFile<State = Saved> {
@@ -143,7 +181,6 @@ impl<State> UploadedFile<State> {
 
 // Constructor for new files (no id yet)
 impl UploadedFile<New> {
-
     pub fn new(name: String, filetype: String, contents: Vec<u8>) -> Self {
         Self {
             id: None,
@@ -172,7 +209,6 @@ impl UploadedFile<New> {
     }
 }
 
-
 // Methods available for both states
 impl<State> UploadedFile<State> {
     pub fn name(&self) -> &str {
@@ -187,7 +223,6 @@ impl<State> UploadedFile<State> {
         &self.contents
     }
 }
-
 
 impl UploadedFile<Saved> {
     /// Get the id (guaranteed to exist for Saved state)
@@ -221,7 +256,7 @@ impl UploadedFile<Saved> {
 }
 
 #[derive(Debug)]
-pub struct UploadedFileMetadata{
+pub struct UploadedFileMetadata {
     // Option<Uuid> allows us to have a flat struct for SQLx
     // while enforcing id presence/absence through the type system
     id: FileID,
@@ -234,10 +269,9 @@ impl UploadedFileMetadata {
     }
 
     #[tracing::instrument]
-    pub async fn get_one(
-        id: FileID,
+    pub async fn get_all(
         tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    ) -> anyhow::Result<Self> {
+    ) -> anyhow::Result<Vec<Self>> {
         let r = sqlx::query_as!(
             UploadedFileMetadata,
             r#"
@@ -246,11 +280,9 @@ impl UploadedFileMetadata {
         name,
         filetype
     FROM uploaded_files
-    WHERE id = $1
             "#,
-            id as FileID
         )
-        .fetch_one(&mut **tx)
+        .fetch_all(&mut **tx)
         .await?;
 
         Ok(r)

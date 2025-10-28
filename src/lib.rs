@@ -4,11 +4,11 @@ pub mod svg_icon;
 use serde::{Deserialize, Serialize};
 
 use axum::{
+    Form, Router,
     extract::{FromRef, Path, State},
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
     routing::{get, post},
-    Form, Router,
 };
 // Make our own error that wraps `anyhow::Error`.
 pub struct AppError(anyhow::Error);

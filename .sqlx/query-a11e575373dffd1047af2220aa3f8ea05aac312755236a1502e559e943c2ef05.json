@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n    SELECT\n        id,\n        name,\n        filetype\n    FROM uploaded_files\n    WHERE id = $1\n            ",
+  "query": "\n    SELECT\n        id,\n        name,\n        filetype\n    FROM uploaded_files\n            ",
   "describe": {
     "columns": [
       {
@@ -20,9 +20,7 @@
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -30,5 +28,5 @@
       false
     ]
   },
-  "hash": "0e1a3c7bb416bcd3ccab7fb59559b19ffff63cb904a880ef13b3a1f993bd5aef"
+  "hash": "a11e575373dffd1047af2220aa3f8ea05aac312755236a1502e559e943c2ef05"
 }

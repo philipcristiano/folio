@@ -1,30 +1,27 @@
-FROM node:14 as NODE_BUILDER
-ADD ui /app/src/ui
-WORKDIR /app/src/ui
-RUN npm install
-RUN npm run build
-
-FROM erlang:25 AS BUILDER
-RUN mkdir -p /app/folio
-ADD Makefile rebar3 rebar.* /app/folio
-WORKDIR /app/folio
-RUN make compile
-COPY --from=NODE_BUILDER /app/src/priv/public /app/folio/priv/public
-
-ADD . /app/folio
-RUN make compile
-RUN make tar && mv /app/folio/_build/default/rel/folio_release/folio_release-*.tar.gz /app.tar.gz
-
-FROM debian:bullseye
-
-ENV LOG_LEVEL=info
-RUN apt-get update && apt-get install -y openssl && apt-get clean
-COPY --from=BUILDER /app.tar.gz /app.tar.gz
-
+FROM lukemathwalker/cargo-chef:latest-rust-1.90-bookworm AS chef
 WORKDIR /app
-EXPOSE 8000
 
-RUN apt-get update && apt-get install -y openssl ca-certificates && apt-get clean
-RUN tar -xzf /app.tar.gz
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
 
-CMD ["/app/bin/folio_release", "foreground"]
+FROM chef AS builder
+COPY --from=planner /app/recipe.json recipe.json
+# Build dependencies - this is the caching Docker layer!
+RUN cargo chef cook --release --recipe-path recipe.json
+# Build application
+COPY . .
+COPY --from=d3fk/tailwindcss:stable /tailwindcss /usr/local/bin/tailwindcss
+ENV SQLX_OFFLINE=true
+RUN cargo build --release
+
+# We do not need the Rust toolchain to run the binary!
+FROM debian:bookworm-slim
+WORKDIR /app
+
+RUN apt-get update && apt-get install openssl ca-certificates -y && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /app/target/release/folio-migrate /usr/local/bin/folio-migrate
+COPY --from=builder /app/target/release/folio /usr/local/bin/folio
+
+ENTRYPOINT ["/usr/local/bin/folio"]

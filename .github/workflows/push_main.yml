@@ -4,31 +4,82 @@ on:
   push:
     branches:
       - main
-    tags:
-      - "*"
 
 jobs:
-
-  erlang:
-    uses: "philipcristiano/workflows/.github/workflows/rebar3.yml@main"
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   docker_push:
     name: "Push docker image"
     uses: "philipcristiano/workflows/.github/workflows/docker-build-push.yml@main"
-
+    needs: [flake, rust, database]
     with:
-      repository: philipcristiano/folio
-      qemu_platforms: amd64,arm64
-      docker_platforms: linux/amd64,linux/arm64/v8
-      timeout: 45
+      repository: ${{ github.repository }}
+      timeout: 25
 
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
-  js:
-    uses: "./.github/workflows/r-javascript.yml"
+  database:
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: folio
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v4.1.3
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v26
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable extension
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -d folio -U postgres -tc "CREATE EXTENSION pgcrypto;"
+
+      - uses: workflow/nix-shell-action@v3.3.0
+        with:
+          flakes-from-devshell: true
+          script: |
+            unset DATABASE_URL
+            cargo build --bin folio-migrate
+            cargo run --bin folio-migrate -- --config-file="config.github-actions.toml" migrate
+
+  rust:
+    uses: "philipcristiano/workflows/.github/workflows/rust.yml@main"
     with:
-      context: ./ui
+      setup_script: |
+          curl -sL https://github.com/tailwindlabs/tailwindcss/releases/download/v3.4.1/tailwindcss-linux-x64 -o tailwindcss
+          chmod +x tailwindcss
+          mv tailwindcss /usr/local/bin
+
+  release-please:
+    needs: [flake, rust, database]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/release-please-action@v4
+        with:
+          token: ${{ secrets.REPO_TOKEN }}
+          release-type: rust
+
+  flake:
+    uses: "philipcristiano/workflows/.github/workflows/nix.yml@main"
+    with:
+      flakes-from-devshell: true
+      script: |
+        unset DATABASE_URL
+        export SQLX_OFFLINE=true
+        cargo build

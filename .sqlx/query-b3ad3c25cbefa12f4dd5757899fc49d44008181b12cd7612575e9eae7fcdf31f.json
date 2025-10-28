@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n    INSERT INTO uploaded_files ( name, filetype, contents )\n    VALUES ( $1, $2, $3 )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b3ad3c25cbefa12f4dd5757899fc49d44008181b12cd7612575e9eae7fcdf31f"
+}

@@ -29,7 +29,7 @@ tracing = "0.1.40"
 
 url = "2.5.0"
 signal-hook = "0.3.17"
-service_conventions = { version = "0.0.30", features = ["tracing", "oidc", "tracing-http"]}
+service_conventions = { version = "0.0.32", features = ["tracing", "oidc", "tracing-http"]}
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "tls-rustls", "postgres", "macros", "uuid", "chrono", "rust_decimal"] }
 base64 = "0.22.0"
 reqwest = { version = "0.12", features = ["rustls-tls", "json"], default-features = false }

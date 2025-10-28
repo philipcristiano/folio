@@ -2,9 +2,10 @@ use clap::Parser;
 use std::str;
 
 use axum::{
-    extract::{State},
+    Router,
+    extract::State,
     response::{IntoResponse, Redirect, Response},
-    routing::{get}, Router,
+    routing::get,
 };
 use std::net::SocketAddr;
 
@@ -33,7 +34,7 @@ pub struct Args {
     log_json: bool,
 }
 
-use folio::{AppState, AppConfig, AppError};
+use folio::{AppConfig, AppError, AppState};
 
 use sqlx::postgres::PgPool;
 use sqlx::postgres::PgPoolOptions;

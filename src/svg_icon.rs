@@ -1,4 +1,4 @@
-use maud::{html, Markup};
+use maud::{Markup, html};
 
 // heroicons https://heroicons.com/outline
 fn default_hw() -> Markup {

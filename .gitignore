@@ -8,4 +8,4 @@ target
 
 .DS_STORE
 
-/static/tailwind.css
+/folio.toml

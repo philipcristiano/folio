@@ -68,7 +68,7 @@ jobs:
           PGPASSWORD: postgres
         run: psql -h 127.0.0.1 -d folio -U postgres -tc "CREATE EXTENSION pgcrypto;"
 
-      - uses: workflow/nix-shell-action@v3.3.0
+      - uses: workflow/nix-shell-action@v3.4.0
         with:
           flakes-from-devshell: true
           script: |

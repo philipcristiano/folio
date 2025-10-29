@@ -47,7 +47,7 @@ aes-gcm-siv = "0.11.1"
 aead = "0.5.2"
 bitcoin = { version = "0.32.0", features = ["serde"] }
 generic-array = "1.0.0"
-serde_arrays = "0.1.0"
+serde_arrays = "0.2.0"
 serde_with = { version = "3.8.1", features = ["hex", "base64"] }
 rust_decimal_macros = "1.34.2"
 

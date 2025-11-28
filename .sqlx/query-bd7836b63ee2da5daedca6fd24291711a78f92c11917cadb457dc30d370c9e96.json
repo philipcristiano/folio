@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n    SELECT\n        id,\n        name,\n        filetype,\n        contents\n    FROM uploaded_files\n    WHERE id = $1\n            ",
+  "query": "\n    SELECT\n        id,\n        name,\n        filetype,\n        contents,\n        process_state\n    FROM uploaded_files\n    WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -22,6 +22,11 @@
         "ordinal": 3,
         "name": "contents",
         "type_info": "Bytea"
+      },
+      {
+        "ordinal": 4,
+        "name": "process_state",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -33,8 +38,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "ae62f9914bfb312edfb1f809eb51aaaf857de632bbc0a5408f76402215124198"
+  "hash": "bd7836b63ee2da5daedca6fd24291711a78f92c11917cadb457dc30d370c9e96"
 }

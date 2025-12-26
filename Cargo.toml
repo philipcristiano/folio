@@ -28,7 +28,7 @@ toml = "0.9.0"
 tracing = "0.1.40"
 
 url = "2.5.0"
-signal-hook = "0.3.17"
+signal-hook = "0.4.0"
 service_conventions = { version = "0.0.32", features = ["tracing", "oidc", "tracing-http"]}
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "tls-rustls", "postgres", "macros", "uuid", "chrono", "rust_decimal"] }
 base64 = "0.22.0"

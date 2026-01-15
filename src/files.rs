@@ -1,6 +1,6 @@
 use axum::{
     Router,
-    extract::State,
+    extract::{Path, State},
     response::{IntoResponse, Redirect, Response},
     routing::get,
 };
@@ -14,13 +14,19 @@ pub struct New;
 #[derive(Debug)]
 pub struct Saved;
 
-#[derive(Clone, Debug, sqlx::Type)]
+#[derive(Clone, Debug, sqlx::Type, serde::Deserialize)]
 #[sqlx(transparent)]
 pub struct FileID(uuid::Uuid);
 // Encode implementation for sending data to Postgres
 impl From<uuid::Uuid> for FileID {
     fn from(id: uuid::Uuid) -> Self {
         Self(id)
+    }
+}
+
+impl FileID {
+    fn to_path_file_label(&self) -> String {
+        format!("/files/{}/label", self.0.to_string())
     }
 }
 
@@ -32,6 +38,7 @@ pub fn router() -> Router<AppState> {
                 .post(handle_file_upload_post)
                 .layer(axum::extract::DefaultBodyLimit::max(1024 * 1024 * 100)),
         )
+        .route("/{file_id}/label", get(handle_file_label))
         .route("/", get(handle_file_list))
     //.route("/list", get(handle_file_list)))
 }
@@ -111,10 +118,9 @@ async fn handle_file_list(
         Ok(crate::html::maud_page(html! {
               (crate::html::sidebar())
               div #main class="main" {
-
                 ul {
                     @for file in files {
-                        li { (file.name) }
+                        li { a href=(file.get_id().to_path_file_label()) {(file.name)} }
                     }
                 }
 
@@ -128,6 +134,56 @@ async fn handle_file_list(
     }
 }
 
+#[axum::debug_handler]
+async fn handle_file_label(
+    Path(file_id): Path<FileID>,
+    State(app_state): State<AppState>,
+    user: Result<
+        Option<service_conventions::oidc::OIDCUser>,
+        service_conventions::oidc::OIDCUserError,
+    >,
+) -> Result<Response, AppError> {
+    if let Ok(Some(_user)) = user {
+        let mut c = app_state.db.begin().await?;
+        let file = UploadedFile::get_one(file_id, &mut c).await?;
+        c.rollback().await?;
+        let file_headers = file.get_file_headers()?;
+        Ok(crate::html::maud_page(html! {
+              (crate::html::sidebar())
+              div #main class="main" {
+                ul {
+                    @for header in file_headers {
+                        li { (header) }
+                    }
+                }
+              }
+
+        })
+        .into_response())
+    } else {
+        Ok(Redirect::to("/").into_response())
+    }
+}
+
+#[derive(Debug, sqlx::Type)]
+//#[sqlx(type_name = "process_state")]
+pub enum UploadFileProcessState {
+    New,
+    Labelled,
+    Done,
+    Unknown,
+}
+
+impl From<String> for UploadFileProcessState {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "New" => UploadFileProcessState::New,
+            "Labelled" => UploadFileProcessState::Labelled,
+            "Done" => UploadFileProcessState::Done,
+            _ => UploadFileProcessState::Unknown,
+        }
+    }
+}
 #[derive(Debug)]
 pub struct UploadedFile<State = Saved> {
     // Option<Uuid> allows us to have a flat struct for SQLx
@@ -136,6 +192,7 @@ pub struct UploadedFile<State = Saved> {
     name: String,
     filetype: String,
     contents: Vec<u8>,
+    process_state: UploadFileProcessState,
     // Zero-sized marker that doesn't affect memory layout
     _state: PhantomData<State>,
 }
@@ -150,6 +207,7 @@ pub struct UploadedFileRow {
     name: String,
     filetype: String,
     contents: Vec<u8>,
+    process_state: UploadFileProcessState,
     // Zero-sized marker that doesn't affect memory layout
 }
 impl From<UploadedFileRow> for UploadedFile<Saved> {
@@ -159,6 +217,7 @@ impl From<UploadedFileRow> for UploadedFile<Saved> {
             name: row.name,
             filetype: row.filetype,
             contents: row.contents,
+            process_state: row.process_state,
             _state: PhantomData,
         }
     }
@@ -187,6 +246,7 @@ impl UploadedFile<New> {
             name,
             filetype,
             contents,
+            process_state: UploadFileProcessState::New,
             _state: PhantomData,
         }
     }
@@ -242,7 +302,8 @@ impl UploadedFile<Saved> {
         id,
         name,
         filetype,
-        contents
+        contents,
+        process_state
     FROM uploaded_files
     WHERE id = $1
             "#,
@@ -252,6 +313,17 @@ impl UploadedFile<Saved> {
         .await?;
 
         Ok(r.into())
+    }
+
+    fn get_file_headers(self) -> anyhow::Result<Vec<String>> {
+        let mut csv_file = csv::Reader::from_reader(self.contents.as_slice());
+        let csv_headers = csv_file.headers()?;
+        let headers: Vec<String> = csv_headers
+            .iter()
+            .into_iter()
+            .map(|h| h.clone().to_string())
+            .collect();
+        Ok(headers)
     }
 }
 

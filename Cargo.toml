@@ -1,6 +1,6 @@
 [package]
 name = "folio"
-version = "0.0.1"
+version = "0.1.0"
 edition = "2024"
 description = "Crypto portfolio"
 license = "Apache-2.0"

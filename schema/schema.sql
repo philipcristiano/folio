@@ -16,6 +16,8 @@ CREATE TABLE uploaded_files (
     name text NOT NULL,
     filetype text NOT NULL,
     contents bytea NOT NULL,
+    process_state text NOT NULL DEFAULT 'New',
 
-    CONSTRAINT filetype_check_1 CHECK (filetype = ANY('{csv}'::TEXT[]))
+    CONSTRAINT filetype_check_1 CHECK (filetype = ANY('{csv}'::TEXT[])),
+    CONSTRAINT process_state_check_2 CHECK (process_state = ANY('{New,Labelled,Done}'::TEXT[]))
 )

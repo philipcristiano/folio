@@ -38,7 +38,7 @@ thiserror = "1.0.59"
 rust_decimal = { version = "1.35.0", features = ["db-postgres", "serde-float"] }
 axum-extra = { version = "0.12.0", features = ["query"] }
 http = "1.1.0"
-serde_qs = "0.15.0"
+serde_qs = "1.0.0"
 chronoutil = "0.2.6"
 
 rust-embed = { version = "8.3.0", features = ["axum", "mime-guess", "mime_guess"] }
